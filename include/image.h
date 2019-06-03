@@ -6,5 +6,7 @@
 
 int create_image(char *filepath);
 bool exist_image(char *filepath);
+int write_image();
+int read_image();
 
 #endif // IMAGE_H
