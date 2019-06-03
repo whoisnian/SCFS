@@ -1,1 +1,3 @@
-# filesystem
+# SCFS
+
+Simple and Crude FileSystem.
