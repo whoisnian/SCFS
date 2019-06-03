@@ -5,6 +5,8 @@
     > Mail: zhuchangbao1998@gmail.com
     > Created Time: 2019年05月31日 星期五 23时57分24秒
     > Compile: gcc shel.c -o shel -I../include
+    > Run: ./shel -p /bin
+    > Clean: rm ./shel
  ************************************************************************/
 #include <stdio.h>
 #include <stdlib.h>

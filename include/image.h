@@ -4,9 +4,12 @@
 #include <stdbool.h>
 #include "definition.h"
 
-int create_image(char *filepath);
-bool exist_image(char *filepath);
-int write_image();
-int read_image();
+extern char *image_path;
+
+int open_image(char *filepath);
+int close_image(void);
+bool exist_image(void);
+int write_image(blockid_t blockid, const void *buf, int len);
+int read_image(blockid_t blockid, void *buf, int len);
 
 #endif // IMAGE_H
