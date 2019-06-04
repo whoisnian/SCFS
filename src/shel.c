@@ -20,11 +20,11 @@
 
 char input_cmd[SC_PATH_MAX*2];          // 输入的完整命令
 char path_cmd[SC_PATH_MAX];             // 调用程序的完整路径
-char argv_cmd[32][SC_PATH_MAX];         // 输入命令的完整参数
+char argv_cmd[32][SC_PATH_MAX];         // 输入命令的完整参数（最多记录32个参数）
 
 int exe_num;                            // 可执行文件数量
 char exe_path[SC_PATH_MAX];             // 可执行文件所在文件夹（相当于环境变量PATH）
-char exe[64][2][SC_PATH_MAX];           // 可执行文件名称与其完整路径
+char exe[64][2][SC_PATH_MAX];           // 可执行文件名称与其完整路径（最多记录文件夹下64个可执行文件）
 
 char cur_dir[SC_PATH_MAX];              // 当前工作目录
 

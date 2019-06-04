@@ -8,9 +8,9 @@
     > Run: ./test_image
     > Clean: rm ./test_image ./test.img
  ************************************************************************/
-#include<stdio.h>
+#include <stdio.h>
 #include <string.h>
-#include"image.h"
+#include "image.h"
 
 int main(void)
 {
