@@ -36,7 +36,7 @@ int main(void)
     printf("\n[TEST3]\n");
     inode_st *res;
     res = read_inode(0);
-    if(res->privilege == DEFAULT_FILE_PRIVILEGE&&res->user == 0&&res->atime == 0)
+    if(res->privilege == SC_DEFAULT_FILE_PRIVILEGE&&res->user == 0&&res->atime == 0)
         printf("read_inode1 ok\n");
     else
         printf("read_inode1 error\n");

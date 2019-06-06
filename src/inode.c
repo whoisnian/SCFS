@@ -14,7 +14,7 @@
 int init_inode(inodeid_t inodeid)
 {
     inode_st temp;
-    temp.privilege = DEFAULT_FILE_PRIVILEGE;
+    temp.privilege = SC_DEFAULT_FILE_PRIVILEGE;
     temp.user = 0;
     temp.group = 0;
     temp.size = 0;
