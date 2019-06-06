@@ -42,7 +42,7 @@ int main(void)
         printf("read_inode1 error\n");
 
     printf("\n[TEST4]\n");
-    res->privilege = res->privilege&(~SC_OWN_PRIVILEGE_ALL);
+    res->privilege = res->privilege&(~SC_USR_PRIVILEGE_ALL);
     res->atime = time(NULL);
     res->mtime = time(NULL);
     init_inode(1);
