@@ -35,8 +35,8 @@ int init_scfs(const char *filepath)
     if(superblock == NULL)
         return -1;
     
-    superblock->block_left = superblock->block_total - superblock->first_block - 1;
-    superblock->inode_left = superblock->inode_total - 1;
+    superblock->block_free = superblock->block_total - superblock->first_block - 1;
+    superblock->inode_free = superblock->inode_total - 1;
     superblock->validbit = 1;
     superblock->last_write = time(NULL);
 

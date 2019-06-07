@@ -14,9 +14,9 @@ int init_superblock(void)
 {
     superblock_st temp;
     temp.block_total = SC_BLOCK_COUNT;
-    temp.block_left = SC_BLOCK_COUNT;
+    temp.block_free = SC_BLOCK_COUNT;
     temp.inode_total = SC_INODE_COUNT;
-    temp.inode_left = SC_INODE_COUNT;
+    temp.inode_free = SC_INODE_COUNT;
 
     temp.block_size = SC_BLOCK_SIZE;
     temp.inode_size = SC_INODE_SIZE;
@@ -50,9 +50,9 @@ superblock_st *read_superblock(void)
 void debug_superblock(const superblock_st *superblock)
 {
     printf("block_total         = %d\n", superblock->block_total);
-    printf("block_left          = %d\n", superblock->block_left);
+    printf("block_free          = %d\n", superblock->block_free);
     printf("inode_total         = %d\n", superblock->inode_total);
-    printf("inode_left          = %d\n", superblock->inode_left);
+    printf("inode_free          = %d\n", superblock->inode_free);
     printf("block_size          = %d\n", superblock->block_size);
     printf("inode_size          = %d\n", superblock->inode_size);
     printf("create_time         = %d\n", superblock->create_time);

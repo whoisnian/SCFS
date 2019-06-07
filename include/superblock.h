@@ -7,9 +7,9 @@
 typedef struct superblock_st
 {
     unsigned int block_total;           // 4    4
-    unsigned int block_left;            // 4    8
+    unsigned int block_free;            // 4    8
     unsigned int inode_total;           // 4    12
-    unsigned int inode_left;            // 4    16
+    unsigned int inode_free;            // 4    16
 
     unsigned int block_size;            // 4    20
     unsigned int inode_size;            // 4    24
