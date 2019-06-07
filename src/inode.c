@@ -18,8 +18,9 @@ int init_inode(inodeid_t inodeid)
     temp.user = 0;
     temp.group = 0;
     temp.size = 0;
+    temp.blocknum = 0;
     temp.flag = 0;
-    temp.link = 0;
+    temp.linknum = 0;
     temp.ctime = time(NULL);
     temp.atime = 0;
     temp.mtime = 0;
@@ -48,7 +49,9 @@ void debug_inode(const inode_st *inode)
     printf("user            = %d\n", inode->user);
     printf("group           = %d\n", inode->group);
     printf("size            = %d\n", inode->size);
+    printf("blocknum        = %d\n", inode->blocknum);
     printf("flag            = %d\n", inode->flag);
+    printf("linknum         = %d\n", inode->linknum);
     printf("ctime           = %ld\n", inode->ctime);
     printf("atime           = %ld\n", inode->atime);
     printf("mtime           = %ld\n", inode->mtime);
@@ -56,7 +59,7 @@ void debug_inode(const inode_st *inode)
     for(int i = 0;i < 16;i++)
         printf("block_id0[%d]%s   = %d\n", i, (i<10?" ":""), inode->block_id0[i]);
     printf("\n");
-    for(int i = 0;i < 3;i++)
+    for(int i = 0;i < 2;i++)
         printf("block_id1[%d]    = %d\n", i, inode->block_id1[i]);
     printf("\n");
     printf("block_id2       = %d\n", inode->block_id2);

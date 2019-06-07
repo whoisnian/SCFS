@@ -10,13 +10,14 @@ typedef struct inode_st
     unsigned int user;              // 4    8
     unsigned int group;             // 4    12
     unsigned int size;              // 4    16
-    unsigned int flag;              // 4    20
-    unsigned int link;              // 4    24
-    time_t ctime;                   // 8    32
-    time_t atime;                   // 8    40
-    time_t mtime;                   // 8    48
-    unsigned int block_id0[16];     // 4*16 112     直接 64K
-    unsigned int block_id1[3];      // 4*3  124     间接 12M
+    unsigned int blocknum;          // 4    20
+    unsigned int flag;              // 4    24
+    unsigned int linknum;           // 4    28
+    time_t ctime;                   // 8    36
+    time_t atime;                   // 8    44
+    time_t mtime;                   // 8    52
+    unsigned int block_id0[16];     // 4*16 116     直接 64K
+    unsigned int block_id1[2];      // 4*2  124     间接 8M
     unsigned int block_id2;         // 4    128     双间接 4G
 }inode_st;
 
