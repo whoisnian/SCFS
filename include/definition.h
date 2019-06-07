@@ -37,7 +37,10 @@ typedef unsigned int inodeid_t;
 
 // 默认用户
 #define SC_ROOT_UID 0
+#define SC_ROOT_GID 0
 #define SC_ROOT_USERNAME "root"
 #define SC_ROOT_PASSWORD "toor"
+typedef unsigned int userid_t;
+typedef unsigned int groupid_t;
 
 #endif // DEFINITION_H

@@ -17,40 +17,40 @@ int main(void)
     bitmap_st tmp;
     int ret;
 
-    init_bitmap(&tmp);
+    init_bitmap_st(&tmp);
 
     printf("\n[TEST1]\n");
     for(int i = 0;i < SC_BLOCK_SIZE*8;i++)
     {
-        ret = read_bitmap(&tmp, i);
+        ret = read_bitmap_st(&tmp, i);
         if(ret) break;
     }
     if(ret == 0)
-        printf("read_bitmap1 ok\n");
+        printf("read_bitmap_st1 ok\n");
     else
-        printf("read_bitmap1 error\n");
+        printf("read_bitmap_st1 error\n");
     
     printf("\n[TEST2]\n");
-    ret = write_bitmap(&tmp, 233, 1);
+    ret = write_bitmap_st(&tmp, 233, 1);
     if(ret == 0)
-        printf("write_bitmap1 ok\n");
+        printf("write_bitmap_st1 ok\n");
     else
-        printf("write_bitmap1 error\n");
+        printf("write_bitmap_st1 error\n");
 
     printf("\n[TEST3]\n");
-    ret = read_bitmap(&tmp, 233);
+    ret = read_bitmap_st(&tmp, 233);
     if(ret == 1)
-        printf("read_bitmap2 ok\n");
+        printf("read_bitmap_st2 ok\n");
     else
-        printf("read_bitmap2 error\n");
+        printf("read_bitmap_st2 error\n");
 
     printf("\n[TEST4]\n");
-    write_bitmap(&tmp, 233, 0);
-    ret = read_bitmap(&tmp, 233);
+    write_bitmap_st(&tmp, 233, 0);
+    ret = read_bitmap_st(&tmp, 233);
     if(ret == 0)
-        printf("read_bitmap3 ok\n");
+        printf("read_bitmap_st3 ok\n");
     else
-        printf("read_bitmap3 error\n");
+        printf("read_bitmap_st3 error\n");
 
     return 0;
 }

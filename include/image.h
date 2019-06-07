@@ -6,7 +6,7 @@
 
 extern char *image_path;
 
-int open_image(char *filepath);
+int open_image(const char *filepath);
 int close_image(void);
 bool exist_image(void);
 int write_image(blockid_t blockid, const void *buf, int len);

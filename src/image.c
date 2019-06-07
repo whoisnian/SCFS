@@ -15,7 +15,7 @@
 
 char *image_path = NULL;
 
-int open_image(char *filepath)
+int open_image(const char *filepath)
 {
     image_path = (char *)malloc(strlen(filepath)*sizeof(char));
     strcpy(image_path, filepath);

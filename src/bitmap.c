@@ -6,15 +6,16 @@
     > Created Time: 2019年06月05日 星期三 00时26分43秒
  ************************************************************************/
 #include <stdio.h>
+#include "image.h"
 #include "bitmap.h"
 
-int init_bitmap(bitmap_st *bitmap)
+int init_bitmap_st(bitmap_st *bitmap)
 {
     memset(bitmap->data, 0, sizeof(bitmap->data));
     return 0;
 }
 
-int write_bitmap(bitmap_st *bitmap, int pos, int value)
+int write_bitmap_st(bitmap_st *bitmap, int pos, int value)
 {
     if(pos < 0||pos >= sizeof(bitmap->data)*8)
     {
@@ -43,7 +44,7 @@ int write_bitmap(bitmap_st *bitmap, int pos, int value)
     return 0;
 }
 
-int read_bitmap(bitmap_st *bitmap, int pos)
+int read_bitmap_st(bitmap_st *bitmap, int pos)
 {
     if(pos < 0||pos >= sizeof(bitmap->data)*8)
     {
@@ -59,4 +60,63 @@ int read_bitmap(bitmap_st *bitmap, int pos)
         return 0;
     else
         return 1;
+}
+
+int init_bitmap(blockid_t inodebitmap_start, blockid_t inodebitmap_end)
+{
+    bitmap_st indoebitmap;
+    init_bitmap_st(&indoebitmap);
+
+    int ret;
+    for(unsigned int i = inodebitmap_start;i <= inodebitmap_end;i++)
+    {
+        ret = write_image(i, &indoebitmap, sizeof(bitmap_st));
+        if(ret != 0)
+            return ret;
+    }
+    return 0;
+}
+
+int write_bitmap(blockid_t inodebitmap_start, blockid_t inodebitmap_end, int pos, int value)
+{
+    if(pos < 0||pos >= (inodebitmap_end-inodebitmap_start+1)*SC_BLOCK_SIZE*8)
+    {
+        printf("Invalid pos '%d'.\n", pos);
+        return -1;
+    }
+
+    if(value != 0&&value != 1)
+    {
+        printf("Invalid value '%d'.\n", value);
+        return -1;
+    }
+
+    int ret;
+    bitmap_st indoebitmap;
+    ret = read_image(inodebitmap_start+(pos/(SC_BLOCK_SIZE*8)), &indoebitmap, sizeof(bitmap_st));
+    if(ret != 0)
+        return ret;
+
+    ret = write_bitmap_st(&indoebitmap, pos%(SC_BLOCK_SIZE*8), value);
+    if(ret != 0)
+        return ret;
+    
+    return write_image(inodebitmap_start+(pos/(SC_BLOCK_SIZE*8)), &indoebitmap, sizeof(bitmap_st));
+}
+
+int read_bitmap(blockid_t inodebitmap_start, blockid_t inodebitmap_end, int pos)
+{
+    if(pos < 0||pos >= (inodebitmap_end-inodebitmap_start+1)*SC_BLOCK_SIZE*8)
+    {
+        printf("Invalid pos '%d'.\n", pos);
+        return -1;
+    }
+
+    int ret;
+    bitmap_st indoebitmap;
+    ret = read_image(inodebitmap_start+(pos/(SC_BLOCK_SIZE*8)), &indoebitmap, sizeof(bitmap_st));
+    if(ret != 0)
+        return ret;
+
+    return read_bitmap_st(&indoebitmap, pos%(SC_BLOCK_SIZE*8));
 }
