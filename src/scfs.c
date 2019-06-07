@@ -14,6 +14,7 @@
 #include "image.h"
 #include "superblock.h"
 #include "inode.h"
+#include "block.h"
 #include "bitmap.h"
 #include "scfs.h"
 
@@ -60,10 +61,19 @@ int init_scfs(const char *filepath)
     inode->privilege = SC_DEFAULT_DIR_PRIVILEGE;
     inode->user = SC_ROOT_UID;
     inode->group = SC_ROOT_GID;
-    inode->size = sizeof(char); // waiting
+    inode->size = sizeof(dir_st)*2;
+    inode->blocknum = 1;
+    inode->linknum = 1;
     inode->atime = time(NULL);
     inode->mtime = time(NULL);
     inode->block_id0[0] = superblock->first_block;
+
+    // xxd test.img | grep 0080b000 可以在 0080b000 一行看到 2e (.)
+    // xxd test.img | grep 0080b100 可以在 0080b000 一行看到 2e2e (..)
+    dir_st dir[2] = {{0, "."}, {0, ".."}};
+    ret = write_block(superblock->first_block, &dir, sizeof(dir_st)*2);
+    if(ret != 0)
+        return ret;
 
     ret = write_inode(0, inode);
     if(ret != 0)
