@@ -10,6 +10,7 @@
 #include <string.h>
 #include "image.h"
 #include "inode.h"
+#include "block.h"
 
 int init_inode(inodeid_t inodeid)
 {
@@ -41,6 +42,102 @@ inode_st *read_inode(inodeid_t inodeid)
     if(read_image(1+inodeid, res, sizeof(inode_st)) != 0)
         return NULL;
     return res;
+}
+
+int find_inode(const char *path, inodeid_t *inodeid)
+{
+    *inodeid = 0;
+    
+    if(!strcmp(path, "/"))
+    {
+        return 0;
+    }
+    else if(path[0] != '/')
+    {
+        return -1;
+    }
+    
+    char *temppath, *res;
+    inode_st *cur_inode;
+    blockid_t cur_blockid;
+    dir_st dir[15];
+    blockid_t blockid[SC_BLOCK_SIZE/sizeof(blockid_t)];
+    int ret, ok;
+    
+    temppath = (char *)malloc(sizeof(char)*(strlen(path)+1));
+    strcpy(temppath, path);
+
+    res = strtok(temppath, "/");
+    while(res != NULL)
+    {
+        //printf("debug: %d %s\n", *inodeid, res);
+        ok = 1;
+        cur_inode = read_inode(*inodeid);
+        for(int i = 0;ok&&i < cur_inode->blocknum;i++)
+        {
+            if(i < 16)
+            {
+                // inode 的 blockid0 列表，共 16 个直接指向的 block
+                cur_blockid = cur_inode->block_id0[i];
+                ret = read_block(cur_blockid, &dir, sizeof(dir_st)*15);
+                for(int j = 0;ok&&((j < 15&&i < cur_inode->blocknum-1)||j < cur_inode->size/sizeof(dir_st)%15);j++)
+                {
+                    if(!strcmp(dir[j].filename, res))
+                    {
+                        free(cur_inode);
+                        *inodeid = dir[j].inodeid;
+                        cur_inode = read_inode(dir[j].inodeid);
+                        ok = 0;
+                    }
+                }
+            }
+            else if(i < 2066)
+            {
+                // inode 的 blockid1 列表，共 2 * 1024 个直接指向的 block，加上中间的 2 个和前面的 16 个
+                cur_blockid = cur_inode->block_id1[(i-16)/1025];
+                ret = read_block(cur_blockid, &blockid, SC_BLOCK_SIZE);
+                if((i-16)%1025 < 1) return -1;
+                ret = read_block(blockid[(i-16)%1025-1], &dir, sizeof(dir_st)*15);
+                for(int j = 0;ok&&((j < 15&&i < cur_inode->blocknum-1)||j < cur_inode->size/sizeof(dir_st)%15);j++)
+                {
+                    if(!strcmp(dir[j].filename, res))
+                    {
+                        free(cur_inode);
+                        *inodeid = dir[j].inodeid;
+                        cur_inode = read_inode(dir[j].inodeid);
+                        ok = 0;
+                    }
+                }
+            }
+            else if(i < 1051667)
+            {
+                // inode 的 blockid2 列表，共 1 * 1024 * 1024 个直接指向的 block，加上中间的 1 + 1024 个和前面的 2066 个
+                cur_blockid = cur_inode->block_id2;
+                ret = read_block(cur_blockid, &blockid, SC_BLOCK_SIZE);
+                ret = read_block(blockid[(i-2067)/1025], &blockid, SC_BLOCK_SIZE);
+                if((i-2067)%1025 < 1) return -1;
+                ret = read_block(blockid[(i-2067)%1025-1], &dir, sizeof(dir_st)*15);
+                for(int j = 0;ok&&((j < 15&&i < cur_inode->blocknum-1)||j < cur_inode->size/sizeof(dir_st)%15);j++)
+                {
+                    if(!strcmp(dir[j].filename, res))
+                    {
+                        free(cur_inode);
+                        *inodeid = dir[j].inodeid;
+                        cur_inode = read_inode(dir[j].inodeid);
+                        ok = 0;
+                    }
+                }
+            }
+            else
+            {
+                return -1;
+            }
+            
+        }
+        if(ok) return -1;
+        res = strtok(NULL, "/");
+    }
+    return 0;
 }
 
 void debug_inode(const inode_st *inode)

@@ -24,6 +24,7 @@ typedef struct inode_st
 int init_inode(inodeid_t inodeid);
 int write_inode(inodeid_t inodeid, inode_st *inode);
 inode_st *read_inode(inodeid_t inodeid);
+int find_inode(const char *path, inodeid_t *inodeid);
 void debug_inode(const inode_st *inode);
 
 #endif // INODE_H

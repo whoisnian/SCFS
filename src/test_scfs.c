@@ -10,6 +10,7 @@
  ************************************************************************/
 
 #include <stdio.h>
+#include "inode.h"
 #include "scfs.h"
 
 int main(void)
@@ -29,6 +30,10 @@ int main(void)
         printf("open_scfs ok\n");
     else
         printf("open_scfs error\n");
+
+    inodeid_t inodeid;
+    ret = find_inode("/home/nian/.config", &inodeid);
+    printf("res: %d %d\n", ret, inodeid);
 
     close_scfs();
     return 0;

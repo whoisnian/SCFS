@@ -9,6 +9,9 @@ int init_scfs(const char *filepath);
 int open_scfs(const char *filepath);
 int close_scfs(void);
 
+void *sc_init(struct fuse_conn_info *conn, struct fuse_config *cfg);
+int sc_getattr(const char *path, struct stat *buf, struct fuse_file_info *fi);
+
 /*
 int (*getattr) (const char *, struct stat *, struct fuse_file_info *fi);
 int (*readlink) (const char *, char *, size_t);
@@ -37,7 +40,7 @@ int (*opendir) (const char *, struct fuse_file_info *);
 int (*readdir) (const char *, void *, fuse_fill_dir_t, off_t, struct fuse_file_info *, enum fuse_readdir_flags);
 int (*releasedir) (const char *, struct fuse_file_info *);
 int (*fsyncdir) (const char *, int, struct fuse_file_info *);
-void *(*init) (struct fuse_conn_info *conn, struct fuse_config *cfg);
+//void *(*init) (struct fuse_conn_info *conn, struct fuse_config *cfg);
 void (*destroy) (void *private_data);
 int (*access) (const char *, int);
 int (*create) (const char *, mode_t, struct fuse_file_info *);

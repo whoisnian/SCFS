@@ -5,16 +5,17 @@
     > Mail: zhuchangbao1998@gmail.com
     > Created Time: 2019年06月07日 星期五 02时08分03秒
  ************************************************************************/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <errno.h>
+#include <sys/stat.h>
 #include "definition.h"
 #include "image.h"
 #include "superblock.h"
-#include "inode.h"
 #include "block.h"
+#include "inode.h"
 #include "bitmap.h"
 #include "scfs.h"
 
@@ -131,4 +132,29 @@ int open_scfs(const char *filepath)
 int close_scfs(void)
 {
     return close_image();
+}
+
+void *sc_init(struct fuse_conn_info *conn, struct fuse_config *cfg)
+{
+    (void) conn;
+    (void) cfg;
+    return NULL;
+}
+
+int sc_getattr(const char *path, struct stat *buf, struct fuse_file_info *fi)
+{
+    (void) fi;
+	int res = 0;
+
+	memset(buf, 0, sizeof(struct stat));
+    if (strcmp(path, "/") == 0) {
+		buf->st_mode = SC_DEFAULT_DIR_PRIVILEGE;
+		buf->st_nlink = 2;
+	} else if (strcmp(path+1, "hello.txt") == 0) {
+		buf->st_mode = SC_DEFAULT_FILE_PRIVILEGE;
+		buf->st_nlink = 1;
+		buf->st_size = strlen("hello");
+	} else
+		res = -ENOENT;
+    return res;
 }
