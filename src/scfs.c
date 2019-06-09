@@ -144,17 +144,68 @@ void *sc_init(struct fuse_conn_info *conn, struct fuse_config *cfg)
 int sc_getattr(const char *path, struct stat *buf, struct fuse_file_info *fi)
 {
     (void) fi;
-	int res = 0;
+    int ret;
+    inode_st *inode = NULL;
+    inodeid_t inodeid;
 
-	memset(buf, 0, sizeof(struct stat));
-    if (strcmp(path, "/") == 0) {
-		buf->st_mode = SC_DEFAULT_DIR_PRIVILEGE;
-		buf->st_nlink = 2;
-	} else if (strcmp(path+1, "hello.txt") == 0) {
-		buf->st_mode = SC_DEFAULT_FILE_PRIVILEGE;
-		buf->st_nlink = 1;
-		buf->st_size = strlen("hello");
-	} else
-		res = -ENOENT;
-    return res;
+    ret = find_inode(path, &inodeid);
+    if(ret != 0)
+        return -ENOENT;
+
+    inode = read_inode(inodeid);
+    if(inode == NULL)
+        return -ENOENT;
+    
+    memset(buf, 0, sizeof(struct stat));
+    //buf->st_dev
+    buf->st_ino = inodeid;
+    buf->st_mode = sc_privilege_to_mode_t(inode->privilege);
+    buf->st_nlink = inode->linknum;
+    buf->st_uid = inode->user;
+    buf->st_gid = inode->group;
+    //buf->st_rdev
+    buf->st_size = inode->size;
+    buf->st_blksize = SC_BLOCK_SIZE;
+    buf->st_blocks = inode->blocknum;
+    buf->st_atime = inode->atime;
+    buf->st_mtime = inode->mtime;
+    buf->st_ctime = inode->ctime;
+
+    if(inode != NULL)
+        free(inode);
+    return 0;
+}
+
+mode_t sc_privilege_to_mode_t(unsigned int privilege)
+{
+    mode_t mode = 0;
+    if(privilege & SC_DIR)
+        mode = mode | __S_IFDIR;
+    else
+        mode = mode | __S_IFREG;
+    if(privilege & SC_S_LINK)
+        mode = mode | __S_IFLNK;
+    
+    if(privilege & SC_USR_PRIVILEGE_R)
+        mode = mode | S_IRUSR;
+    if(privilege & SC_USR_PRIVILEGE_W)
+        mode = mode | S_IWUSR;
+    if(privilege & SC_USR_PRIVILEGE_X)
+        mode = mode | S_IXUSR;
+
+    if(privilege & SC_GRP_PRIVILEGE_R)
+        mode = mode | S_IRGRP;
+    if(privilege & SC_GRP_PRIVILEGE_W)
+        mode = mode | S_IWGRP;
+    if(privilege & SC_GRP_PRIVILEGE_X)
+        mode = mode | S_IXGRP;
+
+    if(privilege & SC_OTH_PRIVILEGE_R)
+        mode = mode | S_IROTH;
+    if(privilege & SC_OTH_PRIVILEGE_W)
+        mode = mode | S_IWOTH;
+    if(privilege & SC_OTH_PRIVILEGE_X)
+        mode = mode | S_IXOTH;
+    
+    return mode;
 }

@@ -12,6 +12,8 @@ int close_scfs(void);
 void *sc_init(struct fuse_conn_info *conn, struct fuse_config *cfg);
 int sc_getattr(const char *path, struct stat *buf, struct fuse_file_info *fi);
 
+mode_t sc_privilege_to_mode_t(unsigned int privilege);
+
 /*
 int (*getattr) (const char *, struct stat *, struct fuse_file_info *fi);
 int (*readlink) (const char *, char *, size_t);
