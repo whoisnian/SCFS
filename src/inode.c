@@ -96,7 +96,7 @@ int find_inode(const char *path, inodeid_t *inodeid)
                 // inode 的 blockid1 列表，共 2 * 1024 个直接指向的 block，加上中间的 2 个和前面的 16 个
                 cur_blockid = cur_inode->block_id1[(i-16)/1025];
                 ret = read_block(cur_blockid, &blockid, SC_BLOCK_SIZE);
-                if((i-16)%1025 < 1) return -1;
+                if((i-16)%1025 < 1) continue;
                 ret = read_block(blockid[(i-16)%1025-1], &dir, sizeof(dir_st)*15);
                 for(int j = 0;ok&&((j < 15&&i < cur_inode->blocknum-1)||j < cur_inode->size/sizeof(dir_st)%15);j++)
                 {
@@ -115,7 +115,7 @@ int find_inode(const char *path, inodeid_t *inodeid)
                 cur_blockid = cur_inode->block_id2;
                 ret = read_block(cur_blockid, &blockid, SC_BLOCK_SIZE);
                 ret = read_block(blockid[(i-2067)/1025], &blockid, SC_BLOCK_SIZE);
-                if((i-2067)%1025 < 1) return -1;
+                if((i-2067)%1025 < 1) continue;
                 ret = read_block(blockid[(i-2067)%1025-1], &dir, sizeof(dir_st)*15);
                 for(int j = 0;ok&&((j < 15&&i < cur_inode->blocknum-1)||j < cur_inode->size/sizeof(dir_st)%15);j++)
                 {

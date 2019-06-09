@@ -15,8 +15,13 @@
 int main(int argc, char *argv[])
 {
     int ret;
-    
-    ret = open_scfs("test.img");
+    ret = init_scfs("/tmp/test.img");
+    if(ret == 0)
+        printf("init_scfs ok\n");
+    else
+        printf("init_scfs error\n");
+
+    ret = open_scfs("/tmp/test.img");
     if(ret == 0)
         printf("open_scfs ok\n");
     else
@@ -25,6 +30,9 @@ int main(int argc, char *argv[])
     struct fuse_operations sc_op = {
         .init = sc_init,
         .getattr = sc_getattr,
+        .readdir = sc_readdir,
+        .open = sc_open,
+        .read = sc_read,
     };
 
     ret = fuse_main(argc, argv, &sc_op, NULL);
@@ -33,6 +41,6 @@ int main(int argc, char *argv[])
     else
         printf("fuse start error %d\n", ret);
 
-    //close_scfs();
+    close_scfs();
     return 0;
 }

@@ -11,6 +11,9 @@ int close_scfs(void);
 
 void *sc_init(struct fuse_conn_info *conn, struct fuse_config *cfg);
 int sc_getattr(const char *path, struct stat *buf, struct fuse_file_info *fi);
+int sc_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi, enum fuse_readdir_flags flags);
+int sc_open(const char *path, struct fuse_file_info *fi);
+int sc_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi);
 
 mode_t sc_privilege_to_mode_t(unsigned int privilege);
 
@@ -27,8 +30,8 @@ int (*link) (const char *, const char *);
 int (*chmod) (const char *, mode_t, struct fuse_file_info *fi);
 int (*chown) (const char *, uid_t, gid_t, struct fuse_file_info *fi);
 int (*truncate) (const char *, off_t, struct fuse_file_info *fi);
-int (*open) (const char *, struct fuse_file_info *);
-int (*read) (const char *, char *, size_t, off_t, struct fuse_file_info *);
+//int (*open) (const char *, struct fuse_file_info *);
+//int (*read) (const char *, char *, size_t, off_t, struct fuse_file_info *);
 int (*write) (const char *, const char *, size_t, off_t, struct fuse_file_info *);
 int (*statfs) (const char *, struct statvfs *);
 int (*flush) (const char *, struct fuse_file_info *);
@@ -39,7 +42,7 @@ int (*getxattr) (const char *, const char *, char *, size_t);
 int (*listxattr) (const char *, char *, size_t);
 int (*removexattr) (const char *, const char *);
 int (*opendir) (const char *, struct fuse_file_info *);
-int (*readdir) (const char *, void *, fuse_fill_dir_t, off_t, struct fuse_file_info *, enum fuse_readdir_flags);
+//int (*readdir) (const char *, void *, fuse_fill_dir_t, off_t, struct fuse_file_info *, enum fuse_readdir_flags);
 int (*releasedir) (const char *, struct fuse_file_info *);
 int (*fsyncdir) (const char *, int, struct fuse_file_info *);
 //void *(*init) (struct fuse_conn_info *conn, struct fuse_config *cfg);

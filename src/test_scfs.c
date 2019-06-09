@@ -31,10 +31,6 @@ int main(void)
     else
         printf("open_scfs error\n");
 
-    inodeid_t inodeid;
-    ret = find_inode("/home/nian/.config", &inodeid);
-    printf("res: %d %d\n", ret, inodeid);
-
     close_scfs();
     return 0;
 }
