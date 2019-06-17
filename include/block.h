@@ -13,5 +13,6 @@ typedef struct dir_st
 
 int write_block(blockid_t blockid, const void *buf, int len);
 int read_block(blockid_t blockid, void *buf, int len);
+inodeid_t new_block(void);
 
 #endif // BLOCK_H

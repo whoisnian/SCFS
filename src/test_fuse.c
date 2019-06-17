@@ -4,9 +4,9 @@
     > Blog: https://whoisnian.com
     > Mail: zhuchangbao1998@gmail.com
     > Created Time: 2019年06月08日 星期六 15时10分42秒
-    > Compile: gcc test_fuse.c image.c superblock.c inode.c bitmap.c scfs.c `pkg-config fuse3 --cflags --libs` -o test_fuse -I../include
+    > Compile: gcc test_fuse.c image.c superblock.c inode.c bitmap.c block.c scfs.c `pkg-config fuse3 --cflags --libs` -o test_fuse -I../include
     > Run: ./test_fuse
-    > Clean: rm ./test_fuse ./test.img
+    > Clean: rm ./test_fuse /tmp/test.img
  ************************************************************************/
 
 #include <stdio.h>
@@ -33,6 +33,7 @@ int main(int argc, char *argv[])
         .readdir = sc_readdir,
         .open = sc_open,
         .read = sc_read,
+        .mkdir = sc_mkdir,
     };
 
     ret = fuse_main(argc, argv, &sc_op, NULL);

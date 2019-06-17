@@ -120,3 +120,15 @@ int read_bitmap(blockid_t inodebitmap_start, blockid_t inodebitmap_end, int pos)
 
     return read_bitmap_st(&indoebitmap, pos%(SC_BLOCK_SIZE*8));
 }
+
+int new_bitmap(blockid_t inodebitmap_start, blockid_t inodebitmap_end)
+{
+    int pos;
+    for(pos = 0;pos < (inodebitmap_end-inodebitmap_start+1)*SC_BLOCK_SIZE*8;pos++)
+    {
+        int ret = read_bitmap(inodebitmap_start, inodebitmap_end, pos);
+        if(ret != 0)
+            return ret;
+    }
+    return -1;
+}

@@ -363,6 +363,15 @@ int sc_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_
     return ret_size;
 }
 
+int sc_mkdir(const char *path, mode_t mode)
+{
+    int ret;
+    inodeid_t inodeid;
+    ret = make_inode(path, &inodeid);
+    /* wait 修改权限 */
+    return ret;
+}
+
 mode_t sc_privilege_to_mode_t(unsigned int privilege)
 {
     mode_t mode = 0;
