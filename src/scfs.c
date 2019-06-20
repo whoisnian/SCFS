@@ -18,6 +18,7 @@
 #include "inode.h"
 #include "bitmap.h"
 #include "scfs.h"
+#include "debugprintf.h"
 
 int init_scfs(const char *filepath)
 {
@@ -59,7 +60,7 @@ int init_scfs(const char *filepath)
     if(inode == NULL)
         return -1;
 
-    inode->privilege = SC_DEFAULT_DIR_PRIVILEGE;
+    inode->mode = SC_DEFAULT_DIR;
     inode->user = SC_ROOT_UID;
     inode->group = SC_ROOT_GID;
     inode->size = sizeof(dir_st)*2;
@@ -94,12 +95,9 @@ int init_scfs(const char *filepath)
     if(ret != 0)
         return ret;
 
-    for(unsigned int i = 0;i <= superblock->first_block;i++)
-    {
-        ret = write_bitmap(superblock->first_block_bitmap, superblock->first_block-1, i, 1);
-        if(ret != 0)
-            return ret;
-    }
+    ret = write_bitmap(superblock->first_block_bitmap, superblock->first_block-1, 0, 1);
+    if(ret != 0)
+        return ret;
 
     return 0;
 }
@@ -159,7 +157,7 @@ int sc_getattr(const char *path, struct stat *buf, struct fuse_file_info *fi)
     memset(buf, 0, sizeof(struct stat));
     //buf->st_dev
     buf->st_ino = inodeid;
-    buf->st_mode = sc_privilege_to_mode_t(inode->privilege);
+    buf->st_mode = inode->mode;
     buf->st_nlink = inode->linknum;
     buf->st_uid = inode->user;
     buf->st_gid = inode->group;
@@ -181,7 +179,7 @@ int sc_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset
     (void) offset;
 	(void) fi;
 	(void) flags;
-    int ret;
+    int ret, res;
     inode_st *cur_inode = NULL;
     inodeid_t cur_inodeid;
 
@@ -193,45 +191,23 @@ int sc_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset
     if(cur_inode == NULL)
         return -ENOENT;
 
-    blockid_t cur_blockid;
     dir_st dir[15];
-    blockid_t blockid[SC_BLOCK_SIZE/sizeof(blockid_t)];
     for(int i = 0;i < cur_inode->blocknum;i++)
     {
-        if(i < 16)
-        {
-            // inode 的 blockid0 列表，共 16 个直接指向的 block
-            cur_blockid = cur_inode->block_id0[i];
-            ret = read_block(cur_blockid, dir, sizeof(dir_st)*15);
-        }
-        else if(i < 2066)
-        {
-            // inode 的 blockid1 列表，共 2 * 1024 个直接指向的 block，加上中间的 2 个和前面的 16 个
-            cur_blockid = cur_inode->block_id1[(i-16)/1025];
-            ret = read_block(cur_blockid, blockid, SC_BLOCK_SIZE);
-            if((i-16)%1025 < 1) continue;
-            ret = read_block(blockid[(i-16)%1025-1], dir, sizeof(dir_st)*15);
-        }
-        else if(i < 1051667)
-        {
-            // inode 的 blockid2 列表，共 1 * 1024 * 1024 个直接指向的 block，加上中间的 1 + 1024 个和前面的 2066 个
-            cur_blockid = cur_inode->block_id2;
-            ret = read_block(cur_blockid, blockid, SC_BLOCK_SIZE);
-            ret = read_block(blockid[(i-2067)/1025], blockid, SC_BLOCK_SIZE);
-            if((i-2067)%1025 < 1) continue;
-            ret = read_block(blockid[(i-2067)%1025-1], dir, sizeof(dir_st)*15);
-        }
-        else
-        {
+        res = __inode_blockno_to_blockid(cur_inode, i);
+        if(res == -1)
             return -1;
-        }
+        else if(res == -2)
+                continue;
+        
+        ret = read_block(res, dir, sizeof(dir_st)*15);
+        if(ret != 0) return -1;
 
         for(int j = 0;(j < 15&&i < cur_inode->blocknum-1)||j < cur_inode->size/sizeof(dir_st)%15;j++)
         {
             filler(buf, dir[j].filename, NULL, 0, 0);
         }
     }
-    printf("sc_readdir %d == %s  ===  %d\n", cur_inodeid, path, cur_inode->blocknum);
 
     if(cur_inode != NULL)
         free(cur_inode);
@@ -261,11 +237,10 @@ int sc_open(const char *path, struct fuse_file_info *fi)
 int sc_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
     (void) fi;
-    int ret;
-    size_t ret_size;
+    int ret, res;
+    size_t ret_size = 0;
     inode_st *cur_inode = NULL;
     inodeid_t cur_inodeid;
-    blockid_t cur_blockid;
     char data[SC_BLOCK_SIZE];
 
     ret = find_inode(path, &cur_inodeid);
@@ -282,55 +257,29 @@ int sc_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_
 		if(offset + size > len)
 			size = len - offset;
 		ret_size = size;
+
+        // 计算到offset包含中间节点一共多少个block
         int num = offset/SC_BLOCK_SIZE;
         int i;
         if(num < 16)
-        {
             i = num;
-        }
         else if(num < 2064)
-        {
             i = num + (num-16)/1024 + 1;
-        }
         else if(num < 1050640)
-        {
             i = num + (num-2064)/1024 + 3;
-        }
         else
-        {
             return -EFAULT;
-        }
         
-        blockid_t blockid[SC_BLOCK_SIZE/sizeof(blockid_t)];
         for(;i < cur_inode->blocknum;i++)
         {
-            if(i < 16)
-            {
-                // inode 的 blockid0 列表，共 16 个直接指向的 block
-                cur_blockid = cur_inode->block_id0[i];
-                ret = read_block(cur_blockid, data, SC_BLOCK_SIZE);
-            }
-            else if(i < 2066)
-            {
-                // inode 的 blockid1 列表，共 2 * 1024 个直接指向的 block，加上中间的 2 个和前面的 16 个
-                cur_blockid = cur_inode->block_id1[(i-16)/1025];
-                ret = read_block(cur_blockid, blockid, SC_BLOCK_SIZE);
-                if((i-16)%1025 < 1) continue;
-                ret = read_block(blockid[(i-16)%1025-1], data, SC_BLOCK_SIZE);
-            }
-            else if(i < 1051667)
-            {
-                // inode 的 blockid2 列表，共 1 * 1024 * 1024 个直接指向的 block，加上中间的 1 + 1024 个和前面的 2066 个
-                cur_blockid = cur_inode->block_id2;
-                ret = read_block(cur_blockid, blockid, SC_BLOCK_SIZE);
-                ret = read_block(blockid[(i-2067)/1025], blockid, SC_BLOCK_SIZE);
-                if((i-2067)%1025 < 1) continue;
-                ret = read_block(blockid[(i-2067)%1025-1], data, SC_BLOCK_SIZE);
-            }
-            else
-            {
+            res = __inode_blockno_to_blockid(cur_inode, i);
+            if(res == -1)
                 return -1;
-            }
+            else if(res == -2)
+                continue;
+            
+            ret = read_block(res, data, SC_BLOCK_SIZE);
+            if(ret != 0) return -1;
 
             if(size >= SC_BLOCK_SIZE)
             {
@@ -348,7 +297,6 @@ int sc_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_
             {
                 break;
             }
-            
         }
 	}
     else
@@ -368,40 +316,5 @@ int sc_mkdir(const char *path, mode_t mode)
     int ret;
     inodeid_t inodeid;
     ret = make_inode(path, &inodeid);
-    /* wait 修改权限 */
     return ret;
-}
-
-mode_t sc_privilege_to_mode_t(unsigned int privilege)
-{
-    mode_t mode = 0;
-    if(privilege & SC_DIR)
-        mode = mode | __S_IFDIR;
-    else
-        mode = mode | __S_IFREG;
-    if(privilege & SC_S_LINK)
-        mode = mode | __S_IFLNK;
-    
-    if(privilege & SC_USR_PRIVILEGE_R)
-        mode = mode | S_IRUSR;
-    if(privilege & SC_USR_PRIVILEGE_W)
-        mode = mode | S_IWUSR;
-    if(privilege & SC_USR_PRIVILEGE_X)
-        mode = mode | S_IXUSR;
-
-    if(privilege & SC_GRP_PRIVILEGE_R)
-        mode = mode | S_IRGRP;
-    if(privilege & SC_GRP_PRIVILEGE_W)
-        mode = mode | S_IWGRP;
-    if(privilege & SC_GRP_PRIVILEGE_X)
-        mode = mode | S_IXGRP;
-
-    if(privilege & SC_OTH_PRIVILEGE_R)
-        mode = mode | S_IROTH;
-    if(privilege & SC_OTH_PRIVILEGE_W)
-        mode = mode | S_IWOTH;
-    if(privilege & SC_OTH_PRIVILEGE_X)
-        mode = mode | S_IXOTH;
-    
-    return mode;
 }

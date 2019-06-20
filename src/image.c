@@ -12,37 +12,36 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include "image.h"
+#include "debugprintf.h"
 
 char *image_path = NULL;
 
 int open_image(const char *filepath)
 {
-    image_path = (char *)malloc(strlen(filepath)*sizeof(char));
+    image_path = (char *)malloc(sizeof(char)*(strlen(filepath)+1));
     strcpy(image_path, filepath);
+
+    // image_path下文件已存在，该函数结束
     if(exist_image())
         return 0;
 
+    // image文件不存在，新建文件
     int fd = open(image_path, O_WRONLY|O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
     if(fd == -1)
     {
-        printf("Unable to open image '%s'.\n", image_path);
+        debug_printf(debug_error, "Unable to open image '%s'.\n", image_path);
         return -1;
     }
 
+    // 设置image文件大小
     if(lseek(fd, SC_IMAGE_SIZE-1, SEEK_SET) == -1)
     {
-        printf("Unable to create image '%s'.\n", image_path);
+        debug_printf(debug_error, "Unable to create image '%s'.\n", image_path);
         return -1;
     }
+
     write(fd, "\0", 1);
     close(fd);
-    return 0;
-}
-
-int close_image(void)
-{
-    free(image_path);
-    image_path = NULL;
     return 0;
 }
 
@@ -55,36 +54,45 @@ bool exist_image(void)
     return true;
 }
 
-int write_image(blockid_t blockid, const void *buf, int len)
+int close_image(void)
 {
-    if(blockid >= SC_BLOCK_COUNT)
+    // 释放内存
+    if(image_path != NULL)
+        free(image_path);
+    image_path = NULL;
+    return 0;
+}
+
+int write_image(sectorid_t sectorid, const void *buf, int len)
+{
+    if(sectorid >= SC_SECTOR_COUNT)
     {
-        printf("Invalid blockid '%u'.\n", blockid);
+        debug_printf(debug_error, "Write to image with invalid sectorid '%u'.\n", sectorid);
         return -1;
     }
 
-    if(len < 0||len > SC_BLOCK_SIZE)
+    if(len < 0||len > SC_SECTOR_SIZE)
     {
-        printf("Invalid len '%d'.\n", len);
+        debug_printf(debug_error, "Write to image with invalid len '%d'.\n", len);
         return -1;
     }
 
     if(!exist_image())
     {
-        printf("Image '%s' not found.\n", image_path);
+        debug_printf(debug_error, "Image '%s' not found.\n", image_path);
         return -1;
     }
 
     int fd = open(image_path, O_WRONLY);
     if(fd == -1)
     {
-        printf("Unable to open image '%s'.\n", image_path);
+        debug_printf(debug_error, "Unable to open image '%s'.\n", image_path);
         return -1;
     }
 
-    if(lseek(fd, blockid*SC_BLOCK_SIZE, SEEK_SET) == -1)
+    if(lseek(fd, sectorid*SC_SECTOR_SIZE, SEEK_SET) == -1)
     {
-        printf("Unable to seek image '%s'.\n", image_path);
+        debug_printf(debug_error, "Unable to seek image '%s'.\n", image_path);
         return -1;
     }
 
@@ -93,36 +101,36 @@ int write_image(blockid_t blockid, const void *buf, int len)
     return 0;
 }
 
-int read_image(blockid_t blockid, void *buf, int len)
+int read_image(sectorid_t sectorid, void *buf, int len)
 {
-    if(blockid >= SC_BLOCK_COUNT)
+    if(sectorid >= SC_SECTOR_COUNT)
     {
-        printf("Invalid blockid '%u'.\n", blockid);
+        debug_printf(debug_error, "Write to image with invalid sectorid '%u'.\n", sectorid);
         return -1;
     }
 
-    if(len < 0||len > SC_BLOCK_SIZE)
+    if(len < 0||len > SC_SECTOR_SIZE)
     {
-        printf("Invalid len '%d'.\n", len);
+        debug_printf(debug_error, "Write to image with invalid len '%d'.\n", len);
         return -1;
     }
 
     if(!exist_image())
     {
-        printf("Image '%s' not found.\n", image_path);
+        debug_printf(debug_error, "Image '%s' not found.\n", image_path);
         return -1;
     }
 
     int fd = open(image_path, O_RDONLY);
     if(fd == -1)
     {
-        printf("Unable to open image '%s'.\n", image_path);
+        debug_printf(debug_error, "Unable to open image '%s'.\n", image_path);
         return -1;
     }
 
-    if(lseek(fd, blockid*SC_BLOCK_SIZE, SEEK_SET) == -1)
+    if(lseek(fd, sectorid*SC_SECTOR_SIZE, SEEK_SET) == -1)
     {
-        printf("Unable to seek image '%s'.\n", image_path);
+        debug_printf(debug_error, "Unable to seek image '%s'.\n", image_path);
         return -1;
     }
 

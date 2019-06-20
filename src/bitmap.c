@@ -6,26 +6,22 @@
     > Created Time: 2019年06月05日 星期三 00时26分43秒
  ************************************************************************/
 #include <stdio.h>
+#include <string.h>
 #include "image.h"
 #include "bitmap.h"
+#include "debugprintf.h"
 
-int init_bitmap_st(bitmap_st *bitmap)
+int __init_bitmap_st(bitmap_st *bitmap)
 {
     memset(bitmap->data, 0, sizeof(bitmap->data));
     return 0;
 }
 
-int write_bitmap_st(bitmap_st *bitmap, int pos, int value)
+int __write_bitmap_st(bitmap_st *bitmap, int pos, int value)
 {
     if(pos < 0||pos >= sizeof(bitmap->data)*8)
     {
-        printf("Invalid pos '%d'.\n", pos);
-        return -1;
-    }
-
-    if(value != 0&&value != 1)
-    {
-        printf("Invalid value '%d'.\n", value);
+        debug_printf(debug_error, "Write to single bitmap with invalid pos '%d'.\n", pos);
         return -1;
     }
 
@@ -41,14 +37,20 @@ int write_bitmap_st(bitmap_st *bitmap, int pos, int value)
         ch = ~ch;
         bitmap->data[pos/8] = bitmap->data[pos/8] & ch;
     }
+    else
+    {
+        debug_printf(debug_error, "Write to single bitmap with invalid value '%d'.\n", value);
+        return -1;
+    }
+    
     return 0;
 }
 
-int read_bitmap_st(bitmap_st *bitmap, int pos)
+int __read_bitmap_st(bitmap_st *bitmap, int pos)
 {
     if(pos < 0||pos >= sizeof(bitmap->data)*8)
     {
-        printf("Invalid pos '%d'.\n", pos);
+        debug_printf(debug_error, "Write to single bitmap with invalid pos '%d'.\n", pos);
         return -1;
     }
 
@@ -62,10 +64,10 @@ int read_bitmap_st(bitmap_st *bitmap, int pos)
         return 1;
 }
 
-int init_bitmap(blockid_t inodebitmap_start, blockid_t inodebitmap_end)
+int init_bitmap(sectorid_t inodebitmap_start, sectorid_t inodebitmap_end)
 {
     bitmap_st indoebitmap;
-    init_bitmap_st(&indoebitmap);
+    __init_bitmap_st(&indoebitmap);
 
     int ret;
     for(unsigned int i = inodebitmap_start;i <= inodebitmap_end;i++)
@@ -77,58 +79,59 @@ int init_bitmap(blockid_t inodebitmap_start, blockid_t inodebitmap_end)
     return 0;
 }
 
-int write_bitmap(blockid_t inodebitmap_start, blockid_t inodebitmap_end, int pos, int value)
+int write_bitmap(sectorid_t inodebitmap_start, sectorid_t inodebitmap_end, int pos, int value)
 {
-    if(pos < 0||pos >= (inodebitmap_end-inodebitmap_start+1)*SC_BLOCK_SIZE*8)
+    if(pos < 0||pos >= (inodebitmap_end-inodebitmap_start+1)*SC_SECTOR_SIZE*8)
     {
-        printf("Invalid pos '%d'.\n", pos);
+        debug_printf(debug_error, "Write to bitmap with invalid pos '%d'.\n", pos);
         return -1;
     }
 
     if(value != 0&&value != 1)
     {
-        printf("Invalid value '%d'.\n", value);
+        debug_printf(debug_error, "Write to bitmap with invalid value '%d'.\n", value);
         return -1;
     }
 
     int ret;
     bitmap_st indoebitmap;
-    ret = read_image(inodebitmap_start+(pos/(SC_BLOCK_SIZE*8)), &indoebitmap, sizeof(bitmap_st));
+    ret = read_image(inodebitmap_start+(pos/(SC_SECTOR_SIZE*8)), &indoebitmap, sizeof(bitmap_st));
     if(ret != 0)
         return ret;
 
-    ret = write_bitmap_st(&indoebitmap, pos%(SC_BLOCK_SIZE*8), value);
+    ret = __write_bitmap_st(&indoebitmap, pos%(SC_SECTOR_SIZE*8), value);
     if(ret != 0)
         return ret;
     
-    return write_image(inodebitmap_start+(pos/(SC_BLOCK_SIZE*8)), &indoebitmap, sizeof(bitmap_st));
+    return write_image(inodebitmap_start+(pos/(SC_SECTOR_SIZE*8)), &indoebitmap, sizeof(bitmap_st));
 }
 
-int read_bitmap(blockid_t inodebitmap_start, blockid_t inodebitmap_end, int pos)
+int read_bitmap(sectorid_t inodebitmap_start, sectorid_t inodebitmap_end, int pos)
 {
-    if(pos < 0||pos >= (inodebitmap_end-inodebitmap_start+1)*SC_BLOCK_SIZE*8)
+    if(pos < 0||pos >= (inodebitmap_end-inodebitmap_start+1)*SC_SECTOR_SIZE*8)
     {
-        printf("Invalid pos '%d'.\n", pos);
+        debug_printf(debug_error, "Write to bitmap with invalid pos '%d'.\n", pos);
         return -1;
     }
 
     int ret;
     bitmap_st indoebitmap;
-    ret = read_image(inodebitmap_start+(pos/(SC_BLOCK_SIZE*8)), &indoebitmap, sizeof(bitmap_st));
+    ret = read_image(inodebitmap_start+(pos/(SC_SECTOR_SIZE*8)), &indoebitmap, sizeof(bitmap_st));
     if(ret != 0)
         return ret;
 
-    return read_bitmap_st(&indoebitmap, pos%(SC_BLOCK_SIZE*8));
+    return __read_bitmap_st(&indoebitmap, pos%(SC_SECTOR_SIZE*8));
 }
 
-int new_bitmap(blockid_t inodebitmap_start, blockid_t inodebitmap_end)
+int new_bitmap(sectorid_t inodebitmap_start, sectorid_t inodebitmap_end)
 {
-    int pos;
-    for(pos = 0;pos < (inodebitmap_end-inodebitmap_start+1)*SC_BLOCK_SIZE*8;pos++)
+    // todo: 使用 unsigned long 优化
+    int pos, ret;
+    for(pos = 0;pos < (inodebitmap_end-inodebitmap_start+1)*SC_SECTOR_SIZE*8;pos++)
     {
-        int ret = read_bitmap(inodebitmap_start, inodebitmap_end, pos);
+        ret = read_bitmap(inodebitmap_start, inodebitmap_end, pos);
         if(ret != 0)
-            return ret;
+            return pos;
     }
     return -1;
 }

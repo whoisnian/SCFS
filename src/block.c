@@ -11,18 +11,17 @@
 
 int write_block(blockid_t blockid, const void *buf, int len)
 {
-    return write_image(blockid, buf, len);
+    return write_image(SC_FIRST_BLOCK_SECTOR+blockid, buf, len);
 }
 
 int read_block(blockid_t blockid, void *buf, int len)
 {
-    return read_image(blockid, buf, len);
+    return read_image(SC_FIRST_BLOCK_SECTOR+blockid, buf, len);
 }
 
 blockid_t new_block(void)
 {
-    superblock_st *superblock = read_superblock();
-    int blockid = new_bitmap(superblock->first_block_bitmap, superblock->first_block-1);
-    write_bitmap(superblock->first_block_bitmap, superblock->first_block-1, blockid, 1);
+    int blockid = new_bitmap(SC_FIRST_BLOCK_BITMAP_SECTOR, SC_FIRST_BLOCK_SECTOR-1);
+    write_bitmap(SC_FIRST_BLOCK_BITMAP_SECTOR, SC_FIRST_BLOCK_SECTOR-1, blockid, 1);
     return blockid;
 }

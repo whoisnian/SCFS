@@ -25,12 +25,12 @@ int init_superblock(void)
     temp.last_mount = 0;
     temp.last_write = 0;
 
-    temp.first_inode = 1;
-    temp.first_inode_bitmap = 1+temp.inode_total*temp.inode_size/temp.block_size;
-    temp.first_block_bitmap = temp.first_inode_bitmap+temp.inode_total/8/temp.block_size;
-    temp.first_block = temp.first_block_bitmap+temp.block_total/8/temp.block_size;
+    temp.first_inode = SC_FIRST_INODE_SECTOR;
+    temp.first_inode_bitmap = SC_FIRST_INODE_BITMAP_SECTOR;
+    temp.first_block_bitmap = SC_FIRST_BLOCK_BITMAP_SECTOR;
+    temp.first_block = SC_FIRST_BLOCK_SECTOR;
 
-    temp.validbit = 1;
+    temp.validbit = true;
     return write_image(0, &temp, sizeof(superblock_st));
 }
 
@@ -55,7 +55,7 @@ void debug_superblock(const superblock_st *superblock)
     printf("inode_free          = %d\n", superblock->inode_free);
     printf("block_size          = %d\n", superblock->block_size);
     printf("inode_size          = %d\n", superblock->inode_size);
-    printf("create_time         = %d\n", superblock->create_time);
+    printf("create_time         = %ld\n", superblock->create_time);
     printf("last_mount          = %ld\n", superblock->last_mount);
     printf("last_write          = %ld\n", superblock->last_write);
     printf("first_inode         = %d\n", superblock->first_inode);

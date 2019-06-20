@@ -16,8 +16,6 @@ int sc_open(const char *path, struct fuse_file_info *fi);
 int sc_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi);
 int sc_mkdir(const char *path, mode_t mode);
 
-mode_t sc_privilege_to_mode_t(unsigned int privilege);
-
 /*
 //int (*getattr) (const char *, struct stat *, struct fuse_file_info *fi);
 int (*readlink) (const char *, char *, size_t);
