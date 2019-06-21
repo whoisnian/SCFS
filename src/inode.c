@@ -180,8 +180,8 @@ int init_inode(inodeid_t inodeid)
     temp.flag = 0;
     temp.linknum = 0;
     temp.ctime = time(NULL);
-    temp.atime = 0;
-    temp.mtime = 0;
+    temp.atime = time(NULL);
+    temp.mtime = time(NULL);
     memset(temp.block_id0, 0, sizeof(temp.block_id0));
     memset(temp.block_id1, 0, sizeof(temp.block_id1));
     temp.block_id2 = 0;
