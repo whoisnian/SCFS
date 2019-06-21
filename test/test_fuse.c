@@ -22,6 +22,8 @@ int main(int argc, char *argv[])
     ret = open_scfs("/tmp/test.img");
     OK_OR_ERROR(ret == 0)
 
+    printf("\n");
+    
     struct fuse_operations sc_op = {
         .init = sc_init,
         .getattr = sc_getattr,
