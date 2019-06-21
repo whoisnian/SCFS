@@ -31,6 +31,7 @@ int main(int argc, char *argv[])
         .open = sc_open,
         .read = sc_read,
         .mkdir = sc_mkdir,
+        .create = sc_create,
     };
 
     ret = fuse_main(argc, argv, &sc_op, NULL);

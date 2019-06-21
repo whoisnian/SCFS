@@ -15,6 +15,7 @@ int sc_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset
 int sc_open(const char *path, struct fuse_file_info *fi);
 int sc_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi);
 int sc_mkdir(const char *path, mode_t mode);
+int sc_create(const char *path, mode_t mode, struct fuse_file_info *fi);
 
 /*
 //int (*getattr) (const char *, struct stat *, struct fuse_file_info *fi);
@@ -47,7 +48,7 @@ int (*fsyncdir) (const char *, int, struct fuse_file_info *);
 //void *(*init) (struct fuse_conn_info *conn, struct fuse_config *cfg);
 void (*destroy) (void *private_data);
 int (*access) (const char *, int);
-int (*create) (const char *, mode_t, struct fuse_file_info *);
+//int (*create) (const char *, mode_t, struct fuse_file_info *);
 int (*lock) (const char *, struct fuse_file_info *, int cmd, struct flock *);
 int (*utimens) (const char *, const struct timespec tv[2], struct fuse_file_info *fi);
 int (*bmap) (const char *, size_t blocksize, uint64_t *idx);

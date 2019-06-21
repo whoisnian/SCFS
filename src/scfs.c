@@ -153,7 +153,7 @@ int sc_getattr(const char *path, struct stat *buf, struct fuse_file_info *fi)
     inode = read_inode(inodeid);
     if(inode == NULL)
         return -ENOENT;
-    
+
     memset(buf, 0, sizeof(struct stat));
     //buf->st_dev
     buf->st_ino = inodeid;
@@ -316,5 +316,28 @@ int sc_mkdir(const char *path, mode_t mode)
     int ret;
     inodeid_t inodeid;
     ret = make_inode(path, &inodeid);
-    return ret;
+    if(ret != 0)
+        return ret;
+    
+    debug_printf(debug_info, "change inode %d mode to %o\n", inodeid, mode);
+    ret = change_inode_mode(inodeid, mode|SC_DIR);
+    if(ret != 0)
+        return ret;
+    debug_printf(debug_info, "change mode ok\n");
+    return 0;
+}
+
+int sc_create(const char *path, mode_t mode, struct fuse_file_info *fi)
+{
+    (void) fi;
+    int ret;
+    inodeid_t inodeid;
+    ret = make_inode(path, &inodeid);
+    if(ret != 0)
+        return ret;
+    
+    ret = change_inode_mode(inodeid, mode|SC_REG);
+    if(ret != 0)
+        return ret;
+    return 0;
 }
