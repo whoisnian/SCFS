@@ -33,7 +33,7 @@ typedef unsigned int blockid_t;
 // 权限设置，参考 /usr/include/bits/stat.h 和 /usr/include/sys/stat.h
 #define SC_DIR 0040000      // 目录
 #define SC_LNK 0120000      // 软链接
-#define SC_REG 0120000      // 文件
+#define SC_REG 0100000      // 文件
 #define SC_USR_R 0400       // 用户读
 #define SC_USR_W 0200       // 用户写
 #define SC_USR_X 0100       // 用户执行
