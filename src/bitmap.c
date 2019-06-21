@@ -66,13 +66,13 @@ int __read_bitmap_st(bitmap_st *bitmap, int pos)
 
 int init_bitmap(sectorid_t inodebitmap_start, sectorid_t inodebitmap_end)
 {
-    bitmap_st indoebitmap;
-    __init_bitmap_st(&indoebitmap);
+    bitmap_st inodebitmap;
+    __init_bitmap_st(&inodebitmap);
 
     int ret;
     for(unsigned int i = inodebitmap_start;i <= inodebitmap_end;i++)
     {
-        ret = write_image(i, &indoebitmap, sizeof(bitmap_st));
+        ret = write_image(i, &inodebitmap, sizeof(bitmap_st));
         if(ret != 0)
             return ret;
     }
@@ -94,16 +94,16 @@ int write_bitmap(sectorid_t inodebitmap_start, sectorid_t inodebitmap_end, int p
     }
 
     int ret;
-    bitmap_st indoebitmap;
-    ret = read_image(inodebitmap_start+(pos/(SC_SECTOR_SIZE*8)), &indoebitmap, sizeof(bitmap_st));
+    bitmap_st inodebitmap;
+    ret = read_image(inodebitmap_start+(pos/(SC_SECTOR_SIZE*8)), &inodebitmap, sizeof(bitmap_st));
     if(ret != 0)
         return ret;
 
-    ret = __write_bitmap_st(&indoebitmap, pos%(SC_SECTOR_SIZE*8), value);
+    ret = __write_bitmap_st(&inodebitmap, pos%(SC_SECTOR_SIZE*8), value);
     if(ret != 0)
         return ret;
     
-    return write_image(inodebitmap_start+(pos/(SC_SECTOR_SIZE*8)), &indoebitmap, sizeof(bitmap_st));
+    return write_image(inodebitmap_start+(pos/(SC_SECTOR_SIZE*8)), &inodebitmap, sizeof(bitmap_st));
 }
 
 int read_bitmap(sectorid_t inodebitmap_start, sectorid_t inodebitmap_end, int pos)
@@ -115,12 +115,12 @@ int read_bitmap(sectorid_t inodebitmap_start, sectorid_t inodebitmap_end, int po
     }
 
     int ret;
-    bitmap_st indoebitmap;
-    ret = read_image(inodebitmap_start+(pos/(SC_SECTOR_SIZE*8)), &indoebitmap, sizeof(bitmap_st));
+    bitmap_st inodebitmap;
+    ret = read_image(inodebitmap_start+(pos/(SC_SECTOR_SIZE*8)), &inodebitmap, sizeof(bitmap_st));
     if(ret != 0)
         return ret;
 
-    return __read_bitmap_st(&indoebitmap, pos%(SC_SECTOR_SIZE*8));
+    return __read_bitmap_st(&inodebitmap, pos%(SC_SECTOR_SIZE*8));
 }
 
 int new_bitmap(sectorid_t inodebitmap_start, sectorid_t inodebitmap_end)
