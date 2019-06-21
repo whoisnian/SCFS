@@ -13,6 +13,7 @@
 #include "inode.h"
 #include "superblock.h"
 #include "block.h"
+#include "debugprintf.h"
 
 int __inode_blockno_to_blockid(const inode_st *inode, unsigned int blockno)
 {
@@ -60,6 +61,7 @@ int __inode_add_new_item_to_inode(inodeid_t inodeid, const char *itemname, inode
     blockid_t blockid[SC_BLOCK_SIZE/sizeof(blockid_t)];
     
     *inodeidres = new_inode();
+    debug_printf(debug_info, "Call new_inode and get %u\n", *inodeidres);
     init_inode(*inodeidres);
     
     inode = read_inode(inodeid);
@@ -161,6 +163,9 @@ int __inode_add_new_item_to_inode(inodeid_t inodeid, const char *itemname, inode
         write_inode(inodeid, inode);
     }
 
+    if(inode != NULL)
+        free(inode);
+    inode = NULL;
     return 0;
 }
 
@@ -254,6 +259,7 @@ int find_inode(const char *path, inodeid_t *inodeid)
 
 int make_inode(const char *path, inodeid_t *inodeid)
 {
+    debug_printf(debug_info, "Call make_inode(%s, *inodeid)\n", path);
     *inodeid = 0;
 
     if(!strcmp(path, "/"))
@@ -301,6 +307,7 @@ int make_inode(const char *path, inodeid_t *inodeid)
             ret = __inode_add_new_item_to_inode(*inodeid, subpath, &inodeidres);
             if(ret != 0) return -1;
             *inodeid = inodeidres;
+            debug_printf(debug_info, "Create dir %s on inode %u\n", subpath, *inodeid);
         }
         subpath = strtok(NULL, "/");
     }
