@@ -185,19 +185,31 @@ int init_inode(inodeid_t inodeid)
     memset(temp.block_id0, 0, sizeof(temp.block_id0));
     memset(temp.block_id1, 0, sizeof(temp.block_id1));
     temp.block_id2 = 0;
-    return write_image(inodeid+1, &temp, sizeof(inode_st));
+    return write_inode(inodeid, &temp);
 }
 
 int write_inode(inodeid_t inodeid, inode_st *inode)
 {
-    return write_image(inodeid+1, inode, sizeof(inode_st));
+    // 读取inode所在扇区
+    inode_st inodes[SC_SECTOR_SIZE/SC_INODE_SIZE];
+    if(read_image(1+inodeid/(SC_SECTOR_SIZE/SC_INODE_SIZE), inodes, SC_SECTOR_SIZE) != 0)
+        return -1;
+    
+    // 修改扇区内容，再写入
+    inodes[inodeid%(SC_SECTOR_SIZE/SC_INODE_SIZE)] = *inode;
+    return write_image(1+inodeid/(SC_SECTOR_SIZE/SC_INODE_SIZE), inodes, SC_SECTOR_SIZE);
 }
 
 inode_st *read_inode(inodeid_t inodeid)
 {
-    inode_st *res = (inode_st *)malloc(sizeof(inode_st));
-    if(read_image(1+inodeid, res, sizeof(inode_st)) != 0)
+    // 读取inode所在扇区
+    inode_st inodes[SC_SECTOR_SIZE/SC_INODE_SIZE];
+    if(read_image(1+inodeid/(SC_SECTOR_SIZE/SC_INODE_SIZE), inodes, SC_SECTOR_SIZE) != 0)
         return NULL;
+
+    // 在得到的扇区内容中获取请求的inode
+    inode_st *res = (inode_st *)malloc(sizeof(inode_st));
+    *res = inodes[inodeid%(SC_SECTOR_SIZE/SC_INODE_SIZE)];
     return res;
 }
 
@@ -314,9 +326,22 @@ int make_inode(const char *path, inodeid_t *inodeid)
     return 0;
 }
 
+int change_inode_mode(inodeid_t inodeid, unsigned int mode)
+{
+    int ret = 0;
+    inode_st *inode;
+    inode = read_inode(inodeid);
+    inode->mode = mode;
+
+    ret = write_inode(inodeid, inode);
+    free(inode);
+
+    return ret;
+}
+
 void debug_inode(const inode_st *inode)
 {
-    printf("mode            = %d\n", inode->mode);
+    printf("mode            = %o\n", inode->mode);
     printf("user            = %d\n", inode->user);
     printf("group           = %d\n", inode->group);
     printf("size            = %d\n", inode->size);
