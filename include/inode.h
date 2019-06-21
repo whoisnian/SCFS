@@ -13,12 +13,12 @@ typedef struct inode_st
     unsigned int blocknum;          // 占用block个数        4    20
     unsigned int flag;              // 文件标志位           4    24
     unsigned int linknum;           // 链接数               4    28
-    time_t ctime;                   // 创建或状态改变时间   8    36
-    time_t atime;                   // 上次读取时间         8    44
-    time_t mtime;                   // 上次修改时间         8    52
-    unsigned int block_id0[16];     // block直接指向        4*16 116     直接 64K
-    unsigned int block_id1[2];      // block间接指向        4*2  124     间接 8M
-    unsigned int block_id2;         // block双间接指向      4    128     双间接 4G
+    unsigned int block_id0[16];     // block直接指向        4*16 92      直接 64K
+    unsigned int block_id1[2];      // block间接指向        4*2  100     间接 8M
+    unsigned int block_id2;         // block双间接指向      4    104     双间接 4G
+    time_t ctime;                   // 创建或状态改变时间   8    112
+    time_t atime;                   // 上次读取时间         8    120
+    time_t mtime;                   // 上次修改时间         8    128
 }inode_st;
 
 // 获取inode中的第 blockno 个block的 blockid
@@ -47,6 +47,9 @@ int find_inode(const char *path, inodeid_t *inodeid);
 
 // 根据路径创建inode
 int make_inode(const char *path, inodeid_t *inodeid);
+
+// 修改指定inode的mode
+int change_inode_mode(inodeid_t inodeid, unsigned int mode);
 
 // 查看inode调试信息
 void debug_inode(const inode_st *inode);
