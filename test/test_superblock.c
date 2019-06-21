@@ -31,7 +31,7 @@ int main(void)
     superblock_st *res;
     res = read_superblock();
     // image文件大小1024M，包含1个1024bytes的superblock，65536个128bytes的inode，和260085个4096bytes的block。
-    // 此时data block区开始的第一个硬盘block编号为2059
+    // 此时data block区开始的第一个硬盘扇区编号为2059
     OK_OR_ERROR(res->block_total == SC_BLOCK_COUNT&&res->first_block == 2059&&res->last_write == 0)
 
     printf("\n[TEST4]\n");

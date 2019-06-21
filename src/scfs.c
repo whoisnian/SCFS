@@ -68,12 +68,12 @@ int init_scfs(const char *filepath)
     inode->linknum = 1;
     inode->atime = time(NULL);
     inode->mtime = time(NULL);
-    inode->block_id0[0] = superblock->first_block;
+    inode->block_id0[0] = 0;
 
     // xxd test.img | grep 0080b000 可以在 0080b000 一行看到 2e (.)
-    // xxd test.img | grep 0080b100 可以在 0080b000 一行看到 2e2e (..)
+    // xxd test.img | grep 0080b100 可以在 0080b100 一行看到 2e2e (..)
     dir_st dir[2] = {{0, "."}, {0, ".."}};
-    ret = write_block(superblock->first_block, dir, sizeof(dir_st)*2);
+    ret = write_block(0, dir, sizeof(dir_st)*2);
     if(ret != 0)
         return ret;
 
@@ -198,7 +198,7 @@ int sc_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset
         if(res == -1)
             return -1;
         else if(res == -2)
-                continue;
+            continue;
         
         ret = read_block(res, dir, sizeof(dir_st)*15);
         if(ret != 0) return -1;
