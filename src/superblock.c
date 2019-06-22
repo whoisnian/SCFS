@@ -87,7 +87,7 @@ int add_block_free()
     superblock_st *res = read_superblock();
     if(res==NULL)
         return -1;
-    res->block_free++；
+    res->block_free++;
     return write_superblock(res);
 }
 
@@ -105,7 +105,7 @@ int dec_block_free()
     superblock_st *res = read_superblock();
     if(res==NULL)
         return -1;
-    res->block_free--；
+    res->block_free--;
     return write_superblock(res);
 }
 

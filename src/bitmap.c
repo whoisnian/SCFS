@@ -140,7 +140,7 @@ int new_bitmap(sectorid_t bitmap_start, sectorid_t bitmap_end)
 int count_bitmap(sectorid_t bitmap_start, sectorid_t bitmap_end)
 {
     //先这么写着，不过需要进一步优化
-    int count=0;
+    int count=0,ret,pos;
     for(pos = 0;pos < (bitmap_end-bitmap_start+1)*SC_SECTOR_SIZE*8;pos++)
     {
         ret = read_bitmap(bitmap_start, bitmap_end, pos);
