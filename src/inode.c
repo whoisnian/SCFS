@@ -249,7 +249,6 @@ int __inode_add_new_block_to_inode(inodeid_t inodeid, blockid_t *blockidres)
     }
     write_inode(inodeid, inode);
 
-    debug_inode(inode);
     if(inode != NULL)
         free(inode);
     inode = NULL;

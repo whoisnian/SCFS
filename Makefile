@@ -25,5 +25,8 @@ test_scfs: src/debugprintf.c src/image.c src/bitmap.c src/superblock.c src/block
 test_fuse: src/debugprintf.c src/image.c src/bitmap.c src/superblock.c src/block.c src/inode.c src/scfs.c test/test_fuse.c
 	$(CC) $(CFLAGS) $^ -I$(IDIR) `pkg-config fuse3 --cflags --libs` -o $(ODIR)/$@
 
+test_debug: src/debugprintf.c src/image.c src/bitmap.c src/superblock.c src/block.c src/inode.c src/scfs.c test/test_debug.c
+	$(CC) $(CFLAGS) $^ -I$(IDIR) `pkg-config fuse3 --cflags --libs` -o $(ODIR)/$@
+
 clean:
 	-rm $(ODIR)/*
