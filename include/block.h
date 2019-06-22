@@ -17,7 +17,7 @@ int write_block(blockid_t blockid, const void *buf, int len);
 // 从指定block读取数据
 int read_block(blockid_t blockid, void *buf, int len);
 
-// 分配一个新的block
+// 分配一个新的blockid，未找到返回-1
 blockid_t new_block(void);
 
 #endif // BLOCK_H

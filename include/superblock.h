@@ -35,6 +35,30 @@ int write_superblock(superblock_st *superblock);
 // 读取superblock，返回的指针在使用完毕后需要手动释放
 superblock_st *read_superblock(void);
 
+//读取block_free
+unsigned int read_block_free();
+
+//读取inode_free
+unsigned int read_inode_free();
+
+//写入block_free
+int write_block_free(unsigned int new_block_free);
+
+//写入inode_free
+int write_inode_free(unsigned int new_inode_free);
+
+//block_free++
+int add_block_free();
+
+//inode_free++
+int add_inode_free();
+
+//block_free--
+int dec_block_free();
+
+//inode_free--
+int dec_inode_free();
+
 // 查看superblock调试信息
 void debug_superblock(const superblock_st *superblock);
 

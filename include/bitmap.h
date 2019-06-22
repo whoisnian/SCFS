@@ -27,7 +27,10 @@ int write_bitmap(sectorid_t inodebitmap_start, sectorid_t inodebitmap_end, int p
 // 从指定范围内的bitmap的指定位置读取值
 int read_bitmap(sectorid_t inodebitmap_start, sectorid_t inodebitmap_end, int pos);
 
-// 在指定范围内的bitmap分配一个未使用的位
+// 在指定范围内的bitmap分配一个未使用的位，未找到返回-1
 int new_bitmap(sectorid_t inodebitmap_start, sectorid_t inodebitmap_end);
+
+// 在指定范围内的bitmap分找到未使用的位的数量
+int count_bitmap(sectorid_t inodebitmap_start, sectorid_t inodebitmap_end);
 
 #endif // BITMAP_H
