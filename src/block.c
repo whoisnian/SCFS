@@ -22,6 +22,8 @@ int read_block(blockid_t blockid, void *buf, int len)
 blockid_t new_block(void)
 {
     int blockid = new_bitmap(SC_FIRST_BLOCK_BITMAP_SECTOR, SC_FIRST_BLOCK_SECTOR-1);
+    if(blockid==-1)return -1;
     write_bitmap(SC_FIRST_BLOCK_BITMAP_SECTOR, SC_FIRST_BLOCK_SECTOR-1, blockid, 1);
+    dec_block_free();
     return blockid;
 }

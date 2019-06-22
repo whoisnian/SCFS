@@ -36,6 +36,7 @@ int init_superblock(void)
 
 int write_superblock(superblock_st *superblock)
 {
+    superblock->last_write=time(NULL);
     return write_image(0, superblock, sizeof(superblock_st));
 }
 
@@ -45,6 +46,76 @@ superblock_st *read_superblock(void)
     if(read_image(0, res, sizeof(superblock_st)) != 0)
         return NULL;
     return res;
+}
+
+unsigned int read_block_free()
+{
+    superblock_st *res = read_superblock();
+    if(res==NULL)
+        return -1;
+    return res->block_free;
+}
+
+unsigned int read_inode_free()
+{
+    superblock_st *res = read_superblock();
+    if(res==NULL)
+        return -1;
+    return res->inode_free;
+}
+
+int write_block_free(unsigned int new_block_free)
+{
+    superblock_st *res = read_superblock();
+    if(res==NULL)
+        return -1;
+    res->block_free=new_block_free;
+    return write_superblock(res);
+}
+
+int write_inode_free(unsigned int new_inode_free)
+{
+    superblock_st *res = read_superblock();
+    if(res==NULL)
+        return -1;
+    res->inode_free=new_inode_free;
+    return write_superblock(res);
+}
+
+int add_block_free()
+{
+    superblock_st *res = read_superblock();
+    if(res==NULL)
+        return -1;
+    res->block_free++；
+    return write_superblock(res);
+}
+
+int add_inode_free()
+{
+    superblock_st *res = read_superblock();
+    if(res==NULL)
+        return -1;
+    res->inode_free++;
+    return write_superblock(res);
+}
+
+int dec_block_free()
+{
+    superblock_st *res = read_superblock();
+    if(res==NULL)
+        return -1;
+    res->block_free--；
+    return write_superblock(res);
+}
+
+int dec_inode_free()
+{
+    superblock_st *res = read_superblock();
+    if(res==NULL)
+        return -1;
+    res->inode_free--;
+    return write_superblock(res);
 }
 
 void debug_superblock(const superblock_st *superblock)

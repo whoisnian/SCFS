@@ -169,6 +169,64 @@ int __inode_add_new_item_to_inode(inodeid_t inodeid, const char *itemname, inode
     return 0;
 }
 
+int __data_inode(inodeit_t inodeid, const char *data, int loc_begin)
+{
+    inode_st *cur_inode=read_inode(inodeid);
+    if(cur_inode->mode==SC_REG){//这个函数不能用于修改目录
+        return -1;
+    }
+    int len_data=strlen(data);
+    int len_block=(len_data+SC_BLOCK_SIZE-1)/SC_BLOCK_SIZE;
+    if(read_block_free()<len_block+(len_blcok-16+1023)/1024+(len_block>2080)){//判断剩余块数是否足够
+        return -2;
+    }
+    int i,now_loc;
+    blockid_t tmp_block;
+    if(len_block<=16)
+    {
+        for(i=0;i<len_block-1;i++)
+        {
+            tmp_block=new_block();
+            if(tmp_block==-1){
+                return -3;
+            }
+            write_block(tmp_block,data+now_loc,SC_BLOCK_SIZE);
+            data+=now_loc;
+            cur_inode->block_id0[i]=tmp_block;
+            cur_inode->linknum++;
+        }
+        tmp_block=new_block();
+        if(tmp_block==-1){
+            return -3;
+        }else
+        {
+            write_block(tmp_block,data+now_loc,len_data-now_loc);
+            cur_inode->block_id0[len_block-1]=tmp_block;
+            cur_inode->linknum++;
+        }          
+    }else
+    {
+        for(i=0;i<16;i++)
+        {
+            tmp_block=new_block();
+            if(tmp_block==-1){
+                return -3;
+            }
+            write_block(tmp_block,data+now_loc,SC_BLOCK_SIZE);
+            data+=now_loc;
+            cur_inode->block_id0[i]=tmp_block;
+            cur_inode->linknum++;
+        }
+        for(i=0;i<len_block-16-1;i++)
+        {
+            //吃完晚饭再写
+        }
+    }
+
+
+}
+
+
 int init_inode(inodeid_t inodeid)
 {
     inode_st temp;
@@ -216,8 +274,15 @@ inode_st *read_inode(inodeid_t inodeid)
 inodeid_t new_inode(void)
 {
     int inodeid = new_bitmap(SC_FIRST_INODE_BITMAP_SECTOR, SC_FIRST_BLOCK_BITMAP_SECTOR-1);
+    if(inodeid==-1)return -1;
     write_bitmap(SC_FIRST_INODE_BITMAP_SECTOR, SC_FIRST_BLOCK_BITMAP_SECTOR-1, inodeid, 1);
+    dec_inode_free();
     return inodeid;
+}
+
+int data_inode(inodeit_t inodeid, const char *data)
+{
+    return __data_inode(inodeid,0);
 }
 
 int find_inode(const char *path, inodeid_t *inodeid)

@@ -64,24 +64,24 @@ int __read_bitmap_st(bitmap_st *bitmap, int pos)
         return 1;
 }
 
-int init_bitmap(sectorid_t inodebitmap_start, sectorid_t inodebitmap_end)
+int init_bitmap(sectorid_t bitmap_start, sectorid_t bitmap_end)
 {
-    bitmap_st inodebitmap;
-    __init_bitmap_st(&inodebitmap);
+    bitmap_st bitmap;
+    __init_bitmap_st(&bitmap);
 
     int ret;
-    for(unsigned int i = inodebitmap_start;i <= inodebitmap_end;i++)
+    for(unsigned int i = bitmap_start;i <= bitmap_end;i++)
     {
-        ret = write_image(i, &inodebitmap, sizeof(bitmap_st));
+        ret = write_image(i, &bitmap, sizeof(bitmap_st));
         if(ret != 0)
             return ret;
     }
     return 0;
 }
 
-int write_bitmap(sectorid_t inodebitmap_start, sectorid_t inodebitmap_end, int pos, int value)
+int write_bitmap(sectorid_t bitmap_start, sectorid_t bitmap_end, int pos, int value)
 {
-    if(pos < 0||pos >= (inodebitmap_end-inodebitmap_start+1)*SC_SECTOR_SIZE*8)
+    if(pos < 0||pos >= (bitmap_end-bitmap_start+1)*SC_SECTOR_SIZE*8)
     {
         debug_printf(debug_error, "Write to bitmap with invalid pos '%d'.\n", pos);
         return -1;
@@ -94,45 +94,58 @@ int write_bitmap(sectorid_t inodebitmap_start, sectorid_t inodebitmap_end, int p
     }
 
     int ret;
-    bitmap_st inodebitmap;
-    ret = read_image(inodebitmap_start+(pos/(SC_SECTOR_SIZE*8)), &inodebitmap, sizeof(bitmap_st));
+    bitmap_st bitmap;
+    ret = read_image(bitmap_start+(pos/(SC_SECTOR_SIZE*8)), &bitmap, sizeof(bitmap_st));
     if(ret != 0)
         return ret;
 
-    ret = __write_bitmap_st(&inodebitmap, pos%(SC_SECTOR_SIZE*8), value);
+    ret = __write_bitmap_st(&bitmap, pos%(SC_SECTOR_SIZE*8), value);
     if(ret != 0)
         return ret;
     
-    return write_image(inodebitmap_start+(pos/(SC_SECTOR_SIZE*8)), &inodebitmap, sizeof(bitmap_st));
+    return write_image(bitmap_start+(pos/(SC_SECTOR_SIZE*8)), &bitmap, sizeof(bitmap_st));
 }
 
-int read_bitmap(sectorid_t inodebitmap_start, sectorid_t inodebitmap_end, int pos)
+int read_bitmap(sectorid_t bitmap_start, sectorid_t bitmap_end, int pos)
 {
-    if(pos < 0||pos >= (inodebitmap_end-inodebitmap_start+1)*SC_SECTOR_SIZE*8)
+    if(pos < 0||pos >= (bitmap_end-bitmap_start+1)*SC_SECTOR_SIZE*8)
     {
         debug_printf(debug_error, "Write to bitmap with invalid pos '%d'.\n", pos);
         return -1;
     }
 
     int ret;
-    bitmap_st inodebitmap;
-    ret = read_image(inodebitmap_start+(pos/(SC_SECTOR_SIZE*8)), &inodebitmap, sizeof(bitmap_st));
+    bitmap_st bitmap;
+    ret = read_image(bitmap_start+(pos/(SC_SECTOR_SIZE*8)), &bitmap, sizeof(bitmap_st));
     if(ret != 0)
         return ret;
 
-    return __read_bitmap_st(&inodebitmap, pos%(SC_SECTOR_SIZE*8));
+    return __read_bitmap_st(&bitmap, pos%(SC_SECTOR_SIZE*8));
 }
 
-int new_bitmap(sectorid_t inodebitmap_start, sectorid_t inodebitmap_end)
+int new_bitmap(sectorid_t bitmap_start, sectorid_t bitmap_end)
 {
     // todo: 使用 unsigned long 优化：一次比较 unsigned long 长度的位，发现空位时再详细寻找
     // 假设1G大小，块大小为4K，则共2^30/2^12=2^18=262144个块，每个块对应一位，unsigned long 长度为64位，则共相当于262144/64=4096个无符号长整形
     int pos, ret;
-    for(pos = 0;pos < (inodebitmap_end-inodebitmap_start+1)*SC_SECTOR_SIZE*8;pos++)
+    for(pos = 0;pos < (bitmap_end-bitmap_start+1)*SC_SECTOR_SIZE*8;pos++)
     {
-        ret = read_bitmap(inodebitmap_start, inodebitmap_end, pos);
+        ret = read_bitmap(bitmap_start, bitmap_end, pos);
         if(ret == 0)
             return pos;
     }
     return -1;
+}
+
+int count_bitmap(sectorid_t bitmap_start, sectorid_t bitmap_end)
+{
+    //先这么写着，不过需要进一步优化
+    int count=0;
+    for(pos = 0;pos < (bitmap_end-bitmap_start+1)*SC_SECTOR_SIZE*8;pos++)
+    {
+        ret = read_bitmap(bitmap_start, bitmap_end, pos);
+        if(ret == 0)
+            count++;
+    }
+    return count;
 }
