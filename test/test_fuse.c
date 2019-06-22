@@ -10,14 +10,19 @@
  ************************************************************************/
 
 #include <stdio.h>
+#include <unistd.h>
 #include "definition.h"
 #include "scfs.h"
 
 int main(int argc, char *argv[])
 {
     int ret;
-    ret = init_scfs("/tmp/test.img");
-    OK_OR_ERROR(ret == 0)
+    // 磁盘文件已存在则不初始化文件系统
+    if(access("/tmp/test.img", F_OK) != 0)
+    {
+        ret = init_scfs("/tmp/test.img");
+        OK_OR_ERROR(ret == 0)
+    }
 
     ret = open_scfs("/tmp/test.img");
     OK_OR_ERROR(ret == 0)
@@ -32,6 +37,7 @@ int main(int argc, char *argv[])
         .read = sc_read,
         .mkdir = sc_mkdir,
         .create = sc_create,
+        .write = sc_write,
     };
 
     ret = fuse_main(argc, argv, &sc_op, NULL);

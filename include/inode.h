@@ -30,6 +30,9 @@ int __inode_blockno_to_blockid(const inode_st *inode, unsigned int blockno);
 // 向目录inode的block中添加一项目录或文件
 int __inode_add_new_item_to_inode(inodeid_t inodeid, const char *itemname, inodeid_t *inodeidres);
 
+// 向文件inode中添加一块block
+int __inode_add_new_block_to_inode(inodeid_t inodeid, blockid_t *blockidres);
+
 // 修改文件类型的inode指定范围[loc_begin,loc_begin+strlen(data))指向的数据，以字节为单位，注意不要超出范围
 // 返回值：
 //   -1 inode是目录
@@ -54,7 +57,6 @@ inodeid_t new_inode(void);
 
 // 修改文件类型的inode指向的数据
 int data_inode(inodeid_t inodeid, const char *data);
-
 
 //删除一个inode(内部判断是文件，软链接还是目录)
 int delete_inode(inodeid_t inodeid);

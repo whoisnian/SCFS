@@ -14,6 +14,7 @@ int sc_getattr(const char *path, struct stat *buf, struct fuse_file_info *fi);
 int sc_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi, enum fuse_readdir_flags flags);
 int sc_open(const char *path, struct fuse_file_info *fi);
 int sc_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi);
+int sc_write(const char *path, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi);
 int sc_mkdir(const char *path, mode_t mode);
 int sc_create(const char *path, mode_t mode, struct fuse_file_info *fi);
 
@@ -32,7 +33,7 @@ int (*chown) (const char *, uid_t, gid_t, struct fuse_file_info *fi);
 int (*truncate) (const char *, off_t, struct fuse_file_info *fi);
 //int (*open) (const char *, struct fuse_file_info *);
 //int (*read) (const char *, char *, size_t, off_t, struct fuse_file_info *);
-int (*write) (const char *, const char *, size_t, off_t, struct fuse_file_info *);
+//int (*write) (const char *, const char *, size_t, off_t, struct fuse_file_info *);
 int (*statfs) (const char *, struct statvfs *);
 int (*flush) (const char *, struct fuse_file_info *);
 int (*release) (const char *, struct fuse_file_info *);

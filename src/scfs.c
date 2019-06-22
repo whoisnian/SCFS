@@ -283,13 +283,13 @@ int sc_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_
 
             if(size >= SC_BLOCK_SIZE)
             {
-                memcpy(buf, data+(offset%SC_BLOCK_SIZE), SC_BLOCK_SIZE);
+                memcpy(buf+(ret_size-size), data+(offset%SC_BLOCK_SIZE), SC_BLOCK_SIZE);
                 offset = 0;
                 size -= SC_BLOCK_SIZE;
             }
             else if(size > 0)
             {
-                memcpy(buf, data+(offset%SC_BLOCK_SIZE), size);
+                memcpy(buf+(ret_size-size), data+(offset%SC_BLOCK_SIZE), size);
                 offset = 0;
                 size = 0;
             }
@@ -311,6 +311,90 @@ int sc_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_
     return ret_size;
 }
 
+int sc_write(const char *path, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
+{
+    (void) fi;
+    int ret, res;
+    size_t ret_size = size;
+    inode_st *cur_inode = NULL;
+    inodeid_t cur_inodeid;
+    blockid_t blockid;
+    char data[SC_BLOCK_SIZE];
+
+    ret = find_inode(path, &cur_inodeid);
+    if(ret != 0)
+        return -ENOENT;
+
+    cur_inode = read_inode(cur_inodeid);
+    if(cur_inode == NULL)
+        return -ENOENT;
+
+    // 分配足够的block
+    long len = cur_inode->size;
+    for(int i = ((offset+size+SC_BLOCK_SIZE-1)/SC_BLOCK_SIZE)-((len+SC_BLOCK_SIZE-1)/SC_BLOCK_SIZE);i > 0;i--)
+    {
+        ret = __inode_add_new_block_to_inode(cur_inodeid, &blockid);
+        if(ret != 0){
+            return ret;}
+    }
+
+    if(cur_inode != NULL)
+        free(cur_inode);
+    cur_inode = NULL;
+    cur_inode = read_inode(cur_inodeid);
+    if(cur_inode == NULL)
+        return -ENOENT;
+
+    if(offset+size > len)
+        cur_inode->size = offset+size;
+
+    // 计算到offset包含中间节点一共多少个block
+    int num = offset/SC_BLOCK_SIZE;
+    int i;
+    if(num < 16)
+        i = num;
+    else if(num < 2064)
+        i = num + (num-16)/1024 + 1;
+    else if(num < 1050640)
+        i = num + (num-2064)/1024 + 3;
+    else
+        return -EFAULT;
+
+    for(;i < cur_inode->blocknum;i++)
+    {
+        res = __inode_blockno_to_blockid(cur_inode, i);
+        if(res == -1)
+            return -1;
+        else if(res == -2)
+            continue;
+        
+        ret = read_block(res, data, SC_BLOCK_SIZE);
+        if(ret != 0) return -1;
+
+        if(size >= SC_BLOCK_SIZE)
+        {
+            memcpy(data+(offset%SC_BLOCK_SIZE), buf+(ret_size-size), SC_BLOCK_SIZE);
+            offset = 0;
+            size -= SC_BLOCK_SIZE;
+        }
+        else if(size > 0)
+        {
+            memcpy(data+(offset%SC_BLOCK_SIZE), buf+(ret_size-size), size);
+            offset = 0;
+            size = 0;
+        }
+        else
+        {
+            break;
+        }
+        write_block(res, data, SC_BLOCK_SIZE);
+    }
+    write_inode(cur_inodeid, cur_inode);
+    if(cur_inode != NULL)
+        free(cur_inode);
+    return ret_size;
+}
+
 int sc_mkdir(const char *path, mode_t mode)
 {
     int ret;
@@ -319,11 +403,9 @@ int sc_mkdir(const char *path, mode_t mode)
     if(ret != 0)
         return ret;
     
-    debug_printf(debug_info, "change inode %d mode to %o\n", inodeid, mode);
     ret = change_inode_mode(inodeid, mode|SC_DIR);
     if(ret != 0)
         return ret;
-    debug_printf(debug_info, "change mode ok\n");
     return 0;
 }
 

@@ -61,7 +61,6 @@ int __inode_add_new_item_to_inode(inodeid_t inodeid, const char *itemname, inode
     blockid_t blockid[SC_BLOCK_SIZE/sizeof(blockid_t)];
     
     *inodeidres = new_inode();
-    debug_printf(debug_info, "Call new_inode and get %u\n", *inodeidres);
     init_inode(*inodeidres);
     
     inode = read_inode(inodeid);
@@ -71,7 +70,7 @@ int __inode_add_new_item_to_inode(inodeid_t inodeid, const char *itemname, inode
     if(inode->size/sizeof(dir_st)%15 != 0)
     {
         // 最后一个block未占满，不需要分配新的block
-        res = __inode_blockno_to_blockid(inode, inode->blocknum);
+        res = __inode_blockno_to_blockid(inode, inode->blocknum-1);
         if(res == -1)
             return -1;
         
@@ -169,11 +168,99 @@ int __inode_add_new_item_to_inode(inodeid_t inodeid, const char *itemname, inode
     return 0;
 }
 
+int __inode_add_new_block_to_inode(inodeid_t inodeid, blockid_t *blockidres)
+{
+    inode_st *inode;
+    inode = read_inode(inodeid);
+    if(inode == NULL)
+        return -1;
+
+    *blockidres = new_block();
+    char data[SC_BLOCK_SIZE];
+    memset(&data, 0, sizeof(data));
+    write_block(*blockidres, &data, sizeof(data));
+
+    blockid_t blockid[SC_BLOCK_SIZE/sizeof(blockid_t)];
+
+    inode->blocknum++;
+    if(inode->blocknum <= 16)
+    {
+        // 直接
+        inode->block_id0[inode->blocknum-1] = *blockidres;
+    }
+    else if((inode->blocknum-17)%1025 < 1)
+    {
+        // 间接的中间节点
+        blockid_t mid_blockid = new_block();
+        inode->block_id1[(inode->blocknum-17)/1025] = mid_blockid;
+        
+        inode->blocknum++;
+        memset(blockid, 0, sizeof(blockid));
+        blockid[0] = *blockidres;
+        write_block(mid_blockid, blockid, SC_BLOCK_SIZE);
+    }
+    else if(inode->blocknum <= 2066)
+    {
+        // 间接
+        read_block(inode->block_id1[(inode->blocknum-17)/1025], blockid, SC_BLOCK_SIZE);
+        blockid[(inode->blocknum-17)%1025-1] = *blockidres;
+        write_block(inode->block_id1[(inode->blocknum-17)/1025], blockid, SC_BLOCK_SIZE);
+    }
+    else if(inode->blocknum == 2067)
+    {
+        // 双间接第一层中间节点
+        blockid_t mid1_blockid = new_block();
+        inode->block_id2 = mid1_blockid;
+        
+        inode->blocknum++;
+        memset(blockid, 0, sizeof(blockid));
+        blockid_t mid2_blockid = new_block();
+        blockid[0] = mid2_blockid;
+        write_block(mid1_blockid, blockid, SC_BLOCK_SIZE);
+
+        inode->blocknum++;
+        memset(blockid, 0, sizeof(blockid));
+        blockid[0] = *blockidres;
+        write_block(mid2_blockid, blockid, SC_BLOCK_SIZE);
+    }
+    else if((inode->blocknum-2068)%1025 < 1)
+    {
+        // 双间接第二层中间节点
+        read_block(inode->block_id2, blockid, SC_BLOCK_SIZE);
+
+        blockid_t mid2_blockid = new_block();
+        blockid[(inode->blocknum-2068)/1025] = mid2_blockid;
+        write_block(inode->block_id2, blockid, SC_BLOCK_SIZE);
+
+        inode->blocknum++;
+        memset(blockid, 0, sizeof(blockid));
+        blockid[0] = *blockidres;
+        write_block(mid2_blockid, blockid, SC_BLOCK_SIZE);
+    }
+    else
+    {
+        // 双间接
+        read_block(inode->block_id2, blockid, SC_BLOCK_SIZE);
+        blockid_t mid2_blockid = blockid[(inode->blocknum-2068)/1025];
+
+        read_block(mid2_blockid, blockid, SC_BLOCK_SIZE);
+        blockid[(inode->blocknum-2068)%1025] = *blockidres;
+        write_block(mid2_blockid, blockid, SC_BLOCK_SIZE);
+    }
+    write_inode(inodeid, inode);
+
+    debug_inode(inode);
+    if(inode != NULL)
+        free(inode);
+    inode = NULL;
+    return 0;
+}
+
 int __data_inode(inodeid_t inodeid, const char *data, int loc_begin)
 {
     inode_st *cur_inode=read_inode(inodeid);
     blockid_t mid_blockid[SC_BLOCK_SIZE/sizeof(blockid_t)],mid2_blockid[SC_BLOCK_SIZE/sizeof(blockid_t)];//1024
-    if(cur_inode->mode&SC_REG==SC_REG){//这个函数不能用于修改目录
+    if((cur_inode->mode&SC_REG)==SC_REG){//这个函数不能用于修改目录
         return -1;
     }
     int len_data=strlen(data);
@@ -395,7 +482,6 @@ int find_inode(const char *path, inodeid_t *inodeid)
 
 int make_inode(const char *path, inodeid_t *inodeid)
 {
-    debug_printf(debug_info, "Call make_inode(%s, *inodeid)\n", path);
     *inodeid = 0;
 
     if(!strcmp(path, "/"))
@@ -443,10 +529,12 @@ int make_inode(const char *path, inodeid_t *inodeid)
             ret = __inode_add_new_item_to_inode(*inodeid, subpath, &inodeidres);
             if(ret != 0) return -1;
             *inodeid = inodeidres;
-            debug_printf(debug_info, "Create dir %s on inode %u\n", subpath, *inodeid);
         }
         subpath = strtok(NULL, "/");
     }
+
+    if(oripath != NULL)
+        free(oripath);
     return 0;
 }
 
