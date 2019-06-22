@@ -173,7 +173,7 @@ int __data_inode(inodeid_t inodeid, const char *data, int loc_begin)
 {
     inode_st *cur_inode=read_inode(inodeid);
     blockid_t mid_blockid[SC_BLOCK_SIZE/sizeof(blockid_t)],mid2_blockid[SC_BLOCK_SIZE/sizeof(blockid_t)];//1024
-    if(cur_inode->mode==SC_REG){//这个函数不能用于修改目录
+    if(cur_inode->mode&SC_REG==SC_REG){//这个函数不能用于修改目录
         return -1;
     }
     int len_data=strlen(data);
@@ -181,7 +181,7 @@ int __data_inode(inodeid_t inodeid, const char *data, int loc_begin)
     if(read_block_free()<len_block+(len_block-16+1023)/1024+(len_block>2080)){//判断剩余块数是否足够
         return -2;
     }
-    int i,j,now_loc;
+    int i,j,now_loc = 0;
     blockid_t tmp_block,mid_block,mid2_block;
     for(i=0;i<16;i++,len_block--)
     {
