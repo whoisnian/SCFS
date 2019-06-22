@@ -21,10 +21,10 @@ test_inode: src/debugprintf.c src/image.c src/bitmap.c src/superblock.c src/bloc
 	$(CC) $(CFLAGS) -I$(IDIR) $^ -o $(ODIR)/$@
 
 test_scfs: src/debugprintf.c src/image.c src/bitmap.c src/superblock.c src/block.c src/inode.c src/scfs.c test/test_scfs.c
-	$(CC) $(CFLAGS) $(LIBS) -I$(IDIR) -I/usr/include/fuse3 $^ -o $(ODIR)/$@
+	$(CC) $(CFLAGS) $(LIBS) -I$(IDIR) `pkg-config fuse3 --cflags` $^ -o $(ODIR)/$@
 
 test_fuse: src/debugprintf.c src/image.c src/bitmap.c src/superblock.c src/block.c src/inode.c src/scfs.c test/test_fuse.c
-	$(CC) $(CFLAGS) $(LIBS) -I$(IDIR) -I/usr/include/fuse3 $^ -o $(ODIR)/$@
+	$(CC) $(CFLAGS) $(LIBS) -I$(IDIR) `pkg-config fuse3 --cflags` $^ -o $(ODIR)/$@
 
 clean:
 	-rm $(ODIR)/*
