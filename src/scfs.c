@@ -452,14 +452,94 @@ int sc_rename(const char *from, const char *to, unsigned int flags)
 {
     debug_printf(debug_info, "from %s\nto %s\nflags %u\n", from, to, flags);
     (void) flags;
-    inodeid_t cur_inodeid;
-    int ret;
+    inodeid_t cur_inodeid, from_parent_inodeid, to_parent_inodeid;
+    int ret, res;
 
+    // 检查from路径和to路径是否存在
     ret = find_inode(to, &cur_inodeid);
     if(ret == 0)
         return -EEXIST;
     
-    // todo
+    char from_parent_path[SC_PATH_MAX], to_parent_path[SC_PATH_MAX];
+    get_parent_path(to, to_parent_path);
+    ret = find_inode(to_parent_path, &to_parent_inodeid);
+    if(ret != 0)
+        return -ENOENT;
+    
+    ret = find_inode(from, &cur_inodeid);
+    if(ret != 0)
+        return -ENOENT;
 
+    get_parent_path(from, from_parent_path);
+    ret = find_inode(from_parent_path, &from_parent_inodeid);
+    if(ret != 0)
+        return -ENOENT;
+
+    // 从from路径的父级目录中移除from
+    dir_st dir[15];
+    inode_st *cur_inode = read_inode(from_parent_inodeid);
+    char filename[SC_PATH_MAX];
+    strcpy(filename, from+strlen(from_parent_path)+1);
+    if(filename[strlen(filename)-1] == '/')
+        filename[strlen(filename)-1] = '\0';
+    int ok = 1;
+    for(int i = 0;ok&&i < cur_inode->blocknum;i++)
+    {
+        res = __inode_blockno_to_blockid(cur_inode, i);
+        if(res == -1)
+            return -1;
+        else if(res == -2)
+            continue;
+        
+        ret = read_block(res, dir, sizeof(dir_st)*15);
+        if(ret != 0) return -1;
+
+        for(int j = 0;ok&&((j < 15&&i < cur_inode->blocknum-1)||j < cur_inode->size/sizeof(dir_st)%15);j++)
+        {
+            if(!strcmp(dir[j].filename, filename))
+            {
+                // todo: 将最后位置上的dir_st移动到这里，并调整inode相关属性
+                ok = 0;
+            }
+        }
+    }
+    if(cur_inode != NULL)
+        free(cur_inode);
+    cur_inode = NULL;
+
+    // 向to路径的父级目录中加入cur_inodeid
+    inodeid_t inodeidres;
+    strcpy(filename, to+strlen(to_parent_path)+1);
+    if(filename[strlen(filename)-1] == '/')
+        filename[strlen(filename)-1] = '\0';
+    __inode_add_new_item_to_inode(to_parent_inodeid, filename, &inodeidres);
+
+    cur_inode = read_inode(to_parent_inodeid);
+    ok = 1;
+    for(int i = 0;ok&&i < cur_inode->blocknum;i++)
+    {
+        res = __inode_blockno_to_blockid(cur_inode, i);
+        if(res == -1)
+            return -1;
+        else if(res == -2)
+            continue;
+        
+        ret = read_block(res, dir, sizeof(dir_st)*15);
+        if(ret != 0) return -1;
+
+        for(int j = 0;ok&&((j < 15&&i < cur_inode->blocknum-1)||j < cur_inode->size/sizeof(dir_st)%15);j++)
+        {
+            if(!strcmp(dir[j].filename, filename))
+            {
+                dir[j].inodeid = cur_inodeid;
+                write_block(res, dir, sizeof(dir_st)*15);
+                free_inode(inodeidres);
+                ok = 0;
+            }
+        }
+    }
+
+    if(cur_inode != NULL)
+        free(cur_inode);
     return 0;
 }
