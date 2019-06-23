@@ -255,10 +255,14 @@ int __inode_add_new_block_to_inode(inodeid_t inodeid, blockid_t *blockidres)
     return 0;
 }
 
-int __data_inode(inodeid_t inodeid, const char *data, int loc_begin)
+int __data_inode(inodeid_t inodeid, const char *data, int loc_begin)//现在loc_begin只能为0
 {
     inode_st *cur_inode=read_inode(inodeid);
     blockid_t mid_blockid[SC_BLOCK_SIZE/sizeof(blockid_t)],mid2_blockid[SC_BLOCK_SIZE/sizeof(blockid_t)];//1024
+    while((cur_inode->mode&SC_LNK)==SC_LNK){//软链接的情况
+        if(find_inode(cur_inode->block_id0[0],cur_inode)<0)
+            return -4;
+    }
     if((cur_inode->mode&SC_REG)==SC_REG){//这个函数不能用于修改目录
         return -1;
     }
@@ -269,6 +273,7 @@ int __data_inode(inodeid_t inodeid, const char *data, int loc_begin)
     }
     int i,j,now_loc = 0;
     blockid_t tmp_block,mid_block,mid2_block;
+    cur_inode->mtime=time(NULL);//确定要修改，记录修改时间
     for(i=0;i<16;i++,len_block--)
     {
         tmp_block=new_block();
@@ -276,7 +281,7 @@ int __data_inode(inodeid_t inodeid, const char *data, int loc_begin)
             return -3;
         }      
         cur_inode->block_id0[i]=tmp_block;
-        cur_inode->linknum++;
+        cur_inode->blocknum++;
         if(len_block>1){
             write_block(tmp_block,data+now_loc,SC_BLOCK_SIZE);
         }else{
@@ -289,6 +294,7 @@ int __data_inode(inodeid_t inodeid, const char *data, int loc_begin)
     if(mid_block==-1){
             return -3;
     }
+    cur_inode->blocknum++;
     cur_inode->block_id1[0]=mid_block;
     memset(mid_blockid,0,sizeof(mid_blockid));
     for(i=0;i<SC_BLOCK_SIZE/sizeof(blockid_t);i++,len_block--)//1024
@@ -298,7 +304,7 @@ int __data_inode(inodeid_t inodeid, const char *data, int loc_begin)
             return -3;
         }
         mid_blockid[i]=tmp_block;
-        cur_inode->linknum++;
+        cur_inode->blocknum++;
         if(len_block>1){
             write_block(tmp_block,data+now_loc,SC_BLOCK_SIZE);
         }else{
@@ -313,6 +319,7 @@ int __data_inode(inodeid_t inodeid, const char *data, int loc_begin)
     if(mid_block==-1){
             return -3;
     }
+    cur_inode->blocknum++;
     cur_inode->block_id1[1]=mid_block;
     memset(mid_blockid,0,sizeof(mid_blockid));
     for(i=0;i<SC_BLOCK_SIZE/sizeof(blockid_t);i++,len_block--)//1024
@@ -322,7 +329,7 @@ int __data_inode(inodeid_t inodeid, const char *data, int loc_begin)
             return -3;
         }
         mid_blockid[i]=tmp_block;
-        cur_inode->linknum++;
+        cur_inode->blocknum++;
         if(len_block>1){
             write_block(tmp_block,data+now_loc,SC_BLOCK_SIZE);
         }else{
@@ -337,6 +344,7 @@ int __data_inode(inodeid_t inodeid, const char *data, int loc_begin)
     if(mid_block==-1){
             return -3;
     }
+    cur_inode->blocknum++;
     cur_inode->block_id2=mid_block;
     memset(mid_blockid,0,sizeof(mid_blockid));
     for(i=0;i<SC_BLOCK_SIZE/sizeof(blockid_t);i++)
@@ -345,6 +353,7 @@ int __data_inode(inodeid_t inodeid, const char *data, int loc_begin)
         if(mid2_block==-1){
                 return -3;
         }
+        cur_inode->blocknum++;
         mid_blockid[i]=mid2_block;
         memset(mid2_blockid,0,sizeof(mid2_blockid));
         for(j=0;j<SC_BLOCK_SIZE/sizeof(blockid_t);j++,len_block--)
@@ -354,7 +363,7 @@ int __data_inode(inodeid_t inodeid, const char *data, int loc_begin)
                 return -3;
             }
             mid2_blockid[j]=tmp_block;
-            cur_inode->linknum++;
+            cur_inode->blocknum++;
             if(len_block>1){
                 write_block(tmp_block,data+now_loc,SC_BLOCK_SIZE);
             }else{
@@ -371,6 +380,12 @@ int __data_inode(inodeid_t inodeid, const char *data, int loc_begin)
     return -3;//到这里还没保存完，说明空间不够，不过理论上不会到这里
 }
 
+void __clear_inode(const inode_st* inode)
+{
+    memset(inode->block_id0, 0, sizeof(inode->block_id0));
+    memset(inode->block_id1, 0, sizeof(inode->block_id1));
+    inode->block_id2 = 0;
+}
 
 int init_inode(inodeid_t inodeid)
 {
@@ -381,7 +396,7 @@ int init_inode(inodeid_t inodeid)
     temp.size = 0;
     temp.blocknum = 0;
     temp.flag = 0;
-    temp.linknum = 0;
+    temp.linknum = 1;
     temp.ctime = time(NULL);
     temp.atime = time(NULL);
     temp.mtime = time(NULL);
@@ -428,6 +443,68 @@ inodeid_t new_inode(void)
 int data_inode(inodeid_t inodeid, const char *data)
 {
     return __data_inode(inodeid,data,0);
+}
+
+int delete_inode(inodeid_t inodeid, bool total)
+{
+    inode_st *cur_inode=read_inode(inodeid);
+    blockid_t mid_blockid[SC_BLOCK_SIZE/sizeof(blockid_t)],mid2_blockid[SC_BLOCK_SIZE/sizeof(blockid_t)];//1024
+    if(!total&&(cur_inode->mode&SC_REG)==SC_REG&&cur_inode->blocknum){//total=false时不能用于删除非空目录
+        return -1;
+    }
+    if(cur_inode->linknum>1){
+        cur_inode->linknum--;
+        return -2;
+    }
+    int i,j;
+    if((cur_inode->mode&SC_REG)==SC_REG)
+    {
+        if(cur_inode->blocknum&&total){
+            //递归删除目录
+            //...delete_inode(soninodeid,true);...
+            //todo
+        }
+    }else
+    {
+        if(cur_inode->blocknum>0)
+        {
+            for(i=0;i<16;i++)
+            if(cur_inode->block_id0[i]>0)
+            {
+                free_block(blockid0[i]);
+            }
+        }
+        if(cur_inode->blocknum>16){
+            read_block(cur_inode->block_id1[0],mid_blockid,SC_BLOCK_SIZE);
+            for(i=0;i<min(1024,cur_inode->blocknum-13);i++)
+            if(mid_blockid[i]>0)
+                free_block(mid_blockid[i]);
+            free_block(cur_inode->block_id1[0]);
+        }
+        if(cur_inode->blocknum>1041){
+            read_block(cur_inode->block_id1[1],mid_blockid,SC_BLOCK_SIZE);
+            for(i=0;i<min(1024,cur_inode->blocknum-13);i++)
+            if(mid_blockid[i]>0)
+                free_block(mid_blockid[i]);
+            free_block(cur_inode->block_id1[1]);
+        }
+        if(cur_inode->blocknum>2066){
+            read_block(cur_inode->block_id2[0],mid_blockid,SC_BLOCK_SIZE);
+            for(i=0;i<1024;i++)
+            if(mid_blockid[i]>0)
+            {
+                read_block(mid_blockid[i],mid2_blockid,SC_BLOCK_SIZE);
+                for(j=0;j<1024;j++)
+                if(mid2_blockid[j]>0)
+                    free_block(mid2_blockid);
+                free_block(mid_blockid[i]);
+                if(cur_inode->blocknum<=2067+(i+1)*1025)break;
+            }
+            free_block(cur_inode->block_id2[0]);
+        }
+    }
+    __clear_inode(cur_inode);
+    return 0;
 }
 
 int find_inode(const char *path, inodeid_t *inodeid)

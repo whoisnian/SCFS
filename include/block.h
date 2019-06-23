@@ -20,4 +20,7 @@ int read_block(blockid_t blockid, void *buf, int len);
 // 分配一个新的blockid，未找到返回-1
 blockid_t new_block(void);
 
+//删除一个block，请务必检查blockid为正数，为负数可能会导致误删
+void free_block(blockid_t blockid);
+
 #endif // BLOCK_H

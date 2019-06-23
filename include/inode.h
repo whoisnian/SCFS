@@ -33,15 +33,16 @@ int __inode_add_new_item_to_inode(inodeid_t inodeid, const char *itemname, inode
 // 向文件inode中添加一块block
 int __inode_add_new_block_to_inode(inodeid_t inodeid, blockid_t *blockidres);
 
-// 修改文件类型的inode指定范围[loc_begin,loc_begin+strlen(data))指向的数据，以字节为单位，注意不要超出范围
+// 修改文件类型的inode指定范围[loc_begin,loc_begin+strlen(data))指向的数据，以字节为单位，注意不要超出范围，现在暂时只能处理loc_begin为零，如果需要不为零的接口再补写
 // 返回值：
 //   -1 inode是目录
 //   -2 空间不足
 //   -3 意外错误（如开始空间足够，运行过程中空间不足）
-int __data_inode(inodeid_t inodeid, const char *data, int loc_begin);
+//   -4 inode作为软链接指向不存在或不合法的路径
+int __data_inode(inodeid_t inodeid, const char *data, int loc_begin=0);
 
 //清空inode的blockid
-int __clear_inode(const inode_st* inode); 
+void __clear_inode(const inode_st* inode); 
 
 // 初始化inode
 int init_inode(inodeid_t inodeid);
@@ -58,8 +59,8 @@ inodeid_t new_inode(void);
 // 修改文件类型的inode指向的数据
 int data_inode(inodeid_t inodeid, const char *data);
 
-//删除一个inode(内部判断是文件，软链接还是目录)
-int delete_inode(inodeid_t inodeid);
+//删除一个inode(内部判断是文件，软链接还是目录)，total表示是否递归删除所有
+int delete_inode(inodeid_t inodeid, bool total=false);
 
 //获取一个目录类型inode的目录
 int list_inode(inodeid_t inodeid, char *list);
