@@ -17,6 +17,8 @@ int sc_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_
 int sc_write(const char *path, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi);
 int sc_mkdir(const char *path, mode_t mode);
 int sc_create(const char *path, mode_t mode, struct fuse_file_info *fi);
+int sc_chmod(const char *path, mode_t mode, struct fuse_file_info *fi);
+int sc_rename(const char *from, const char *to, unsigned int flags);
 
 /*
 //int (*getattr) (const char *, struct stat *, struct fuse_file_info *fi);
@@ -26,9 +28,9 @@ int (*mknod) (const char *, mode_t, dev_t);
 int (*unlink) (const char *);
 int (*rmdir) (const char *);
 int (*symlink) (const char *, const char *);
-int (*rename) (const char *, const char *, unsigned int flags);
+//int (*rename) (const char *, const char *, unsigned int flags);
 int (*link) (const char *, const char *);
-int (*chmod) (const char *, mode_t, struct fuse_file_info *fi);
+//int (*chmod) (const char *, mode_t, struct fuse_file_info *fi);
 int (*chown) (const char *, uid_t, gid_t, struct fuse_file_info *fi);
 int (*truncate) (const char *, off_t, struct fuse_file_info *fi);
 //int (*open) (const char *, struct fuse_file_info *);

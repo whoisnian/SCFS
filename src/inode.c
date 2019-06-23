@@ -387,6 +387,12 @@ void __clear_inode(inode_st* inode)
     inode->block_id2 = 0;
 }
 
+// 根据绝对路径获取上级目录绝对路径
+int get_parent_path(const char *path, char *parent_path)
+{
+    
+}
+
 int init_inode(inodeid_t inodeid)
 {
     inode_st temp;

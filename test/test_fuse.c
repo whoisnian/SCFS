@@ -38,6 +38,8 @@ int main(int argc, char *argv[])
         .mkdir = sc_mkdir,
         .create = sc_create,
         .write = sc_write,
+        .chmod = sc_chmod,
+        .rename = sc_rename,
     };
 
     ret = fuse_main(argc, argv, &sc_op, NULL);

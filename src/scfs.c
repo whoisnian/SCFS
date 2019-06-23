@@ -423,3 +423,35 @@ int sc_create(const char *path, mode_t mode, struct fuse_file_info *fi)
         return ret;
     return 0;
 }
+
+int sc_chmod(const char *path, mode_t mode, struct fuse_file_info *fi)
+{
+    (void) fi;
+    inodeid_t cur_inodeid;
+    int ret;
+
+    ret = find_inode(path, &cur_inodeid);
+    if(ret != 0)
+        return -ENOENT;
+
+    ret = change_inode_mode(cur_inodeid, mode);
+    if(ret != 0)
+        return ret;
+    return 0;
+}
+
+int sc_rename(const char *from, const char *to, unsigned int flags)
+{
+    debug_printf(debug_info, "from %s\nto %s\nflags %u\n", from, to, flags);
+    (void) flags;
+    inodeid_t cur_inodeid;
+    int ret;
+
+    ret = find_inode(to, &cur_inodeid);
+    if(ret == 0)
+        return -EEXIST;
+    
+    // todo
+
+    return 0;
+}
