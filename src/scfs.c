@@ -63,7 +63,7 @@ int init_scfs(const char *filepath)
     inode->mode = SC_DEFAULT_DIR;
     inode->user = SC_ROOT_UID;
     inode->group = SC_ROOT_GID;
-    inode->size = sizeof(dir_st)*2;
+    inode->size = sizeof(dir_st);
     inode->blocknum = 1;
     inode->linknum = 1;
     inode->atime = time(NULL);
@@ -71,9 +71,8 @@ int init_scfs(const char *filepath)
     inode->block_id0[0] = 0;
 
     // xxd test.img | grep 0080b000 可以在 0080b000 一行看到 2e (.)
-    // xxd test.img | grep 0080b100 可以在 0080b100 一行看到 2e2e (..)
-    dir_st dir[2] = {{0, "."}, {0, ".."}};
-    ret = write_block(0, dir, sizeof(dir_st)*2);
+    dir_st dir = {0, "."};
+    ret = write_block(0, &dir, sizeof(dir_st));
     if(ret != 0)
         return ret;
 
@@ -191,6 +190,9 @@ int sc_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset
     if(cur_inode == NULL)
         return -ENOENT;
 
+    filler(buf, ".", NULL, 0, 0);
+    filler(buf, "..", NULL, 0, 0);
+
     dir_st dir[15];
     for(int i = 0;i < cur_inode->blocknum;i++)
     {
@@ -205,7 +207,8 @@ int sc_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset
 
         for(int j = 0;(j < 15&&i < cur_inode->blocknum-1)||j < cur_inode->size/sizeof(dir_st)%15;j++)
         {
-            filler(buf, dir[j].filename, NULL, 0, 0);
+            if(strcmp(dir[j].filename, ".")&&strcmp(dir[j].filename, ".."))
+                filler(buf, dir[j].filename, NULL, 0, 0);
         }
     }
 
@@ -399,10 +402,15 @@ int sc_mkdir(const char *path, mode_t mode)
 {
     int ret;
     inodeid_t inodeid;
+
+    ret = find_inode(path, &inodeid);
+    if(ret == 0)
+        return -EEXIST;
+
     ret = make_inode(path, &inodeid);
     if(ret != 0)
         return ret;
-    
+
     ret = change_inode_mode(inodeid, mode|SC_DIR);
     if(ret != 0)
         return ret;
