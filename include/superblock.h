@@ -48,10 +48,10 @@ int write_block_free(unsigned int new_block_free);
 int write_inode_free(unsigned int new_inode_free);
 
 //block_free++
-int add_block_free();
+int inc_block_free();
 
 //inode_free++
-int add_inode_free();
+int inc_inode_free();
 
 //block_free--
 int dec_block_free();

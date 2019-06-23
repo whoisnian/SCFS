@@ -82,7 +82,7 @@ int write_inode_free(unsigned int new_inode_free)
     return write_superblock(res);
 }
 
-int add_block_free()
+int inc_block_free()
 {
     superblock_st *res = read_superblock();
     if(res==NULL)
@@ -91,7 +91,7 @@ int add_block_free()
     return write_superblock(res);
 }
 
-int add_inode_free()
+int inc_inode_free()
 {
     superblock_st *res = read_superblock();
     if(res==NULL)
