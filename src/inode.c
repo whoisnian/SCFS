@@ -380,7 +380,7 @@ int __data_inode(inodeid_t inodeid, const char *data, int loc_begin)//现在loc_
     return -3;//到这里还没保存完，说明空间不够，不过理论上不会到这里
 }
 
-void __clear_inode(const inode_st* inode)
+void __clear_inode(inode_st* inode)
 {
     memset(inode->block_id0, 0, sizeof(inode->block_id0));
     memset(inode->block_id1, 0, sizeof(inode->block_id1));
@@ -471,7 +471,7 @@ int delete_inode(inodeid_t inodeid, bool total)
             for(i=0;i<16;i++)
             if(cur_inode->block_id0[i]>0)
             {
-                free_block(blockid0[i]);
+                free_block(cur_inode->block_id0[i]);
             }
         }
         if(cur_inode->blocknum>16){
@@ -489,7 +489,7 @@ int delete_inode(inodeid_t inodeid, bool total)
             free_block(cur_inode->block_id1[1]);
         }
         if(cur_inode->blocknum>2066){
-            read_block(cur_inode->block_id2[0],mid_blockid,SC_BLOCK_SIZE);
+            read_block(cur_inode->block_id2,mid_blockid,SC_BLOCK_SIZE);
             for(i=0;i<1024;i++)
             if(mid_blockid[i]>0)
             {
@@ -500,7 +500,7 @@ int delete_inode(inodeid_t inodeid, bool total)
                 free_block(mid_blockid[i]);
                 if(cur_inode->blocknum<=2067+(i+1)*1025)break;
             }
-            free_block(cur_inode->block_id2[0]);
+            free_block(cur_inode->block_id2);
         }
     }
     __clear_inode(cur_inode);

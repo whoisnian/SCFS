@@ -39,10 +39,10 @@ int __inode_add_new_block_to_inode(inodeid_t inodeid, blockid_t *blockidres);
 //   -2 空间不足
 //   -3 意外错误（如开始空间足够，运行过程中空间不足）
 //   -4 inode作为软链接指向不存在或不合法的路径
-int __data_inode(inodeid_t inodeid, const char *data, int loc_begin=0);
+int __data_inode(inodeid_t inodeid, const char *data, int loc_begin);
 
 //清空inode的blockid
-void __clear_inode(const inode_st* inode); 
+void __clear_inode(inode_st* inode); 
 
 // 初始化inode
 int init_inode(inodeid_t inodeid);
@@ -60,7 +60,7 @@ inodeid_t new_inode(void);
 int data_inode(inodeid_t inodeid, const char *data);
 
 //删除一个inode(内部判断是文件，软链接还是目录)，total表示是否递归删除所有
-int delete_inode(inodeid_t inodeid, bool total=false);
+int delete_inode(inodeid_t inodeid, bool total);
 
 //获取一个目录类型inode的目录
 int list_inode(inodeid_t inodeid, char *list);
