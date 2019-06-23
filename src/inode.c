@@ -15,6 +15,11 @@
 #include "block.h"
 #include "debugprintf.h"
 
+int min(int a, int b)
+{
+    return (a < b?a:b);
+}
+
 int __inode_blockno_to_blockid(const inode_st *inode, unsigned int blockno)
 {
     blockid_t cur_blockid;
@@ -256,7 +261,7 @@ int __inode_add_new_block_to_inode(inodeid_t inodeid, blockid_t *blockidres)
 }
 
 int __data_inode(inodeid_t inodeid, const char *data, int loc_begin)//现在loc_begin只能为0
-{
+{/* // bug较多，待修改
     inode_st *cur_inode=read_inode(inodeid);
     blockid_t mid_blockid[SC_BLOCK_SIZE/sizeof(blockid_t)],mid2_blockid[SC_BLOCK_SIZE/sizeof(blockid_t)];//1024
     while((cur_inode->mode&SC_LNK)==SC_LNK){//软链接的情况
@@ -312,7 +317,7 @@ int __data_inode(inodeid_t inodeid, const char *data, int loc_begin)//现在loc_
             write_block(mid_block,mid_blockid,SC_BLOCK_SIZE);
             return 0;
         }   
-        data+=now_loc;   
+        data+=now_loc;  
     }
     write_block(mid_block,mid_blockid,SC_BLOCK_SIZE);
     mid_block=new_block();
@@ -337,7 +342,7 @@ int __data_inode(inodeid_t inodeid, const char *data, int loc_begin)//现在loc_
             write_block(mid_block,mid_blockid,SC_BLOCK_SIZE);
             return 0;
         }   
-        data+=now_loc;   
+        data+=now_loc;  
     }
     write_block(mid_block,mid_blockid,SC_BLOCK_SIZE);
     mid_block=new_block();
@@ -372,12 +377,14 @@ int __data_inode(inodeid_t inodeid, const char *data, int loc_begin)//现在loc_
                 write_block(mid2_block,mid2_blockid,SC_BLOCK_SIZE);
                 return 0;
             }   
-            data+=now_loc; 
+            data+=now_loc;
         }
         write_block(mid2_block,mid2_blockid,SC_BLOCK_SIZE);
     }
     write_block(mid_block,mid_blockid,SC_BLOCK_SIZE);
     return -3;//到这里还没保存完，说明空间不够，不过理论上不会到这里
+    */
+    return 0;
 }
 
 void __clear_inode(inode_st* inode)
@@ -390,7 +397,40 @@ void __clear_inode(inode_st* inode)
 // 根据绝对路径获取上级目录绝对路径
 int get_parent_path(const char *path, char *parent_path)
 {
-    
+/*
+ * [TEST1]: / parent is /
+ * [TEST2]: /t1 parent is /
+ * [TEST3]: /t2/ parent is /
+ * [TEST4]: /t3/t4/t5 parent is /t3/t4
+ * [TEST5]: /t3/t4/t5/ parent is /t3/t4
+ */
+    if(!strcmp(path, "/"))
+    {
+        strcpy(parent_path, "/");
+    }
+    else if(path[strlen(path)-1] == '/')
+    {
+        for(int i = strlen(path)-2;i > 0;i--)
+        {
+            if(path[i] == '/')
+            {
+                strncpy(parent_path, path, i<1?1:i);
+                break;
+            }
+        }
+    }
+    else
+    {
+        for(int i = strlen(path)-1;i > 0;i--)
+        {
+            if(path[i] == '/')
+            {
+                strncpy(parent_path, path, i<1?1:i);
+                break;
+            }
+        }
+    }
+    return 0;
 }
 
 int init_inode(inodeid_t inodeid)
@@ -451,66 +491,97 @@ int data_inode(inodeid_t inodeid, const char *data)
     return __data_inode(inodeid,data,0);
 }
 
-int delete_inode(inodeid_t inodeid, bool total)
+int delete_inode(inodeid_t inodeid, int option)
 {
-    inode_st *cur_inode=read_inode(inodeid);
-    blockid_t mid_blockid[SC_BLOCK_SIZE/sizeof(blockid_t)],mid2_blockid[SC_BLOCK_SIZE/sizeof(blockid_t)];//1024
-    if(!total&&(cur_inode->mode&SC_REG)==SC_REG&&cur_inode->blocknum){//total=false时不能用于删除非空目录
-        return -1;
-    }
-    if(cur_inode->linknum>1){
+    blockid_t mid_blockid[SC_BLOCK_SIZE/sizeof(blockid_t)];
+    inode_st *cur_inode = read_inode(inodeid);
+
+    // 如果指向该inode的硬链接数大于1，则修改硬链接数，不删除该inode
+    if(cur_inode->linknum > 1)
+    {
         cur_inode->linknum--;
+        write_inode(inodeid, cur_inode);
+        if(cur_inode != NULL)
+            free(cur_inode);
         return -2;
     }
-    int i,j;
-    if((cur_inode->mode&SC_REG)==SC_REG)
+
+    if((cur_inode->mode & SC_DIR) == SC_DIR)
     {
-        if(cur_inode->blocknum&&total){
-            //递归删除目录
-            //...delete_inode(soninodeid,true);...
-            //todo
-        }
-    }else
-    {
-        if(cur_inode->blocknum>0)
+        // 该inode为目录，根据option执行动作
+        if(cur_inode->blocknum > 0&&option == 1)
         {
-            for(i=0;i<16;i++)
-            if(cur_inode->block_id0[i]>0)
+            // 目录非空，且指定递归删除
+            dir_st dir[15];
+            for(int i = 0;i < cur_inode->blocknum;i++)
             {
-                free_block(cur_inode->block_id0[i]);
+                int res = __inode_blockno_to_blockid(cur_inode, i);
+                if(res == -1)
+                    return -1;
+                else if(res == -2)
+                    continue;
+                
+                int ret = read_block(res, dir, sizeof(dir_st)*15);
+                if(ret != 0) return -1;
+
+                for(int j = 0;(j < 15&&i < cur_inode->blocknum-1)||j < cur_inode->size/sizeof(dir_st)%15;j++)
+                {
+                    if(strcmp(dir[j].filename, ".")&&strcmp(dir[j].filename, ".."))
+                        delete_inode(dir[j].inodeid, 1);
+                }
             }
+            free_inode(inodeid);
         }
-        if(cur_inode->blocknum>16){
-            read_block(cur_inode->block_id1[0],mid_blockid,SC_BLOCK_SIZE);
-            for(i=0;i<min(1024,cur_inode->blocknum-13);i++)
-            if(mid_blockid[i]>0)
-                free_block(mid_blockid[i]);
-            free_block(cur_inode->block_id1[0]);
+        else if(cur_inode->blocknum == 0)
+        {
+            // 目录为空
+            free_inode(inodeid);
         }
-        if(cur_inode->blocknum>1041){
-            read_block(cur_inode->block_id1[1],mid_blockid,SC_BLOCK_SIZE);
-            for(i=0;i<min(1024,cur_inode->blocknum-13);i++)
-            if(mid_blockid[i]>0)
-                free_block(mid_blockid[i]);
-            free_block(cur_inode->block_id1[1]);
-        }
-        if(cur_inode->blocknum>2066){
-            read_block(cur_inode->block_id2,mid_blockid,SC_BLOCK_SIZE);
-            for(i=0;i<1024;i++)
-            if(mid_blockid[i]>0)
-            {
-                read_block(mid_blockid[i],mid2_blockid,SC_BLOCK_SIZE);
-                for(j=0;j<1024;j++)
-                if(mid2_blockid[j]>0)
-                    free_block(mid2_blockid);
-                free_block(mid_blockid[i]);
-                if(cur_inode->blocknum<=2067+(i+1)*1025)break;
-            }
-            free_block(cur_inode->block_id2);
+        else
+        {
+            // 目录非空，且未指定递归删除
+            if(cur_inode != NULL)
+                free(cur_inode);
+            return -1;
         }
     }
-    __clear_inode(cur_inode);
+    else
+    {
+        // 该inode为文件，释放所有block
+        for(int i = cur_inode->blocknum-1;i >= 0;i--)
+        {
+            int res = __inode_blockno_to_blockid(cur_inode, i);
+            if(res >= 0)
+                free_block(res);
+        }
+        if(cur_inode->blocknum > 16)
+            free_block(cur_inode->block_id1[0]);
+        if(cur_inode->blocknum > 1041)
+            free_block(cur_inode->block_id1[1]);
+        if(cur_inode->blocknum > 2066)
+        {
+            blockid_t blockid = cur_inode->block_id2;
+            read_block(blockid, mid_blockid, SC_BLOCK_SIZE);
+            for(int j = (cur_inode->blocknum-2068)/1025;j >= 0;j--)
+                free_block(mid_blockid[j]);
+            free_block(cur_inode->block_id2);
+        }
+        free_inode(inodeid);
+    }
+
+    if(cur_inode != NULL)
+        free(cur_inode);
     return 0;
+}
+
+void free_inode(inodeid_t inodeid)
+{
+    int bitmap_status=read_bitmap(SC_FIRST_INODE_BITMAP_SECTOR, SC_FIRST_BLOCK_BITMAP_SECTOR-1, inodeid);
+    if(bitmap_status == 1)
+    {
+        write_bitmap(SC_FIRST_INODE_BITMAP_SECTOR, SC_FIRST_BLOCK_BITMAP_SECTOR-1, inodeid, 0);
+        inc_inode_free();
+    }
 }
 
 int find_inode(const char *path, inodeid_t *inodeid)

@@ -62,8 +62,14 @@ inodeid_t new_inode(void);
 // 修改文件类型的inode指向的数据
 int data_inode(inodeid_t inodeid, const char *data);
 
-// 删除一个inode(内部判断是文件，软链接还是目录)，total表示是否递归删除所有
-int delete_inode(inodeid_t inodeid, bool total);
+// 删除一个inode(内部判断是文件，软链接还是目录)
+// option:
+//  1: 递归删除，对于文件删除其内容及该inode，对于目录递归删除所有子项及该inode
+//  0: 非递归删除，对于文件删除其内容及该inode，对于空目录删除及该inode，对于非空目录返回-1错误码
+int delete_inode(inodeid_t inodeid, int option);
+
+// 释放一个inode，即修改其对应的bitmap，并调整superblock中的记录
+void free_inode(inodeid_t inodeid);
 
 //获取一个目录类型inode的目录
 int list_inode(inodeid_t inodeid, char *list);
