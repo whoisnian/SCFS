@@ -5,7 +5,7 @@ IDIR = include
 ODIR = out
 
 default: test_fuse
-all: test_image test_bitmap test_superblock test_inode test_scfs test_fuse
+all: test_image test_bitmap test_superblock test_inode test_scfs test_fuse test_screen
 
 test_image: src/debugprintf.c src/image.c test/test_image.c
 	$(CC) $(CFLAGS) $^ -I$(IDIR) -o $(ODIR)/$@
@@ -27,6 +27,9 @@ test_fuse: src/debugprintf.c src/image.c src/bitmap.c src/superblock.c src/block
 
 test_debug: src/debugprintf.c src/image.c src/bitmap.c src/superblock.c src/block.c src/inode.c src/scfs.c test/test_debug.c
 	$(CC) $(CFLAGS) $^ -I$(IDIR) `pkg-config fuse3 --cflags --libs` -o $(ODIR)/$@
+
+test_screen:src/screen.c
+	$(CC) $(CFLAGS) $^ -I$(IDIR) -o $(ODIR)/$@ -lncurses
 
 clean:
 	-rm $(ODIR)/*
