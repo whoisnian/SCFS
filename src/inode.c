@@ -261,12 +261,16 @@ int __inode_add_new_block_to_inode(inodeid_t inodeid, blockid_t *blockidres)
 }
 
 int __data_inode(inodeid_t inodeid, const char *data, int loc_begin)//现在loc_begin只能为0
-{/* // bug较多，待修改
+{ // bug较多，待修改
     inode_st *cur_inode=read_inode(inodeid);
     blockid_t mid_blockid[SC_BLOCK_SIZE/sizeof(blockid_t)],mid2_blockid[SC_BLOCK_SIZE/sizeof(blockid_t)];//1024
-    while((cur_inode->mode&SC_LNK)==SC_LNK){//软链接的情况
-        if(find_inode(cur_inode->block_id0[0],cur_inode)<0)
-            return -4;
+    if((cur_inode->mode&SC_LNK)==SC_LNK)
+    {
+        while((cur_inode->mode&SC_LNK)==SC_LNK){//软链接的情况
+            if(find_inode((char*)(cur_inode->block_id0),&inodeid)<0)
+                return -4;
+        }
+        cur_inode=read_inode(inodeid);
     }
     if((cur_inode->mode&SC_REG)==SC_REG){//这个函数不能用于修改目录
         return -1;
@@ -383,7 +387,7 @@ int __data_inode(inodeid_t inodeid, const char *data, int loc_begin)//现在loc_
     }
     write_block(mid_block,mid_blockid,SC_BLOCK_SIZE);
     return -3;//到这里还没保存完，说明空间不够，不过理论上不会到这里
-    */
+    
     return 0;
 }
 
