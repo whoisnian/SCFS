@@ -40,6 +40,7 @@ int main(int argc, char *argv[])
         .write = sc_write,
         .chmod = sc_chmod,
         .rename = sc_rename,
+        .statfs = sc_statfs,
     };
 
     ret = fuse_main(argc, argv, &sc_op, NULL);

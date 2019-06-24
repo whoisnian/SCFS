@@ -19,6 +19,7 @@ int sc_mkdir(const char *path, mode_t mode);
 int sc_create(const char *path, mode_t mode, struct fuse_file_info *fi);
 int sc_chmod(const char *path, mode_t mode, struct fuse_file_info *fi);
 int sc_rename(const char *from, const char *to, unsigned int flags);
+int sc_statfs(const char *path, struct statvfs *stbuf);
 
 /*
 //int (*getattr) (const char *, struct stat *, struct fuse_file_info *fi);
@@ -36,7 +37,7 @@ int (*truncate) (const char *, off_t, struct fuse_file_info *fi);
 //int (*open) (const char *, struct fuse_file_info *);
 //int (*read) (const char *, char *, size_t, off_t, struct fuse_file_info *);
 //int (*write) (const char *, const char *, size_t, off_t, struct fuse_file_info *);
-int (*statfs) (const char *, struct statvfs *);
+//int (*statfs) (const char *, struct statvfs *);
 int (*flush) (const char *, struct fuse_file_info *);
 int (*release) (const char *, struct fuse_file_info *);
 int (*fsync) (const char *, int, struct fuse_file_info *);

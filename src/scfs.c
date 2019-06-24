@@ -608,3 +608,21 @@ int sc_rename(const char *from, const char *to, unsigned int flags)
         free(cur_inode);
     return 0;
 }
+
+int sc_statfs(const char *path, struct statvfs *stbuf)
+{
+    (void) path;
+
+    superblock_st *superblock = read_superblock();
+    stbuf->f_blocks = superblock->block_total;
+    stbuf->f_bsize = superblock->block_size;
+    stbuf->f_bfree = superblock->block_free;
+    stbuf->f_bavail = superblock->block_free;
+    stbuf->f_files = superblock->inode_total;
+    stbuf->f_ffree = superblock->inode_free;
+    stbuf->f_favail = superblock->inode_free;
+    stbuf->f_namemax = SC_NAME_MAX;
+    if(superblock != NULL)
+        free(superblock);
+    return 0;
+}
