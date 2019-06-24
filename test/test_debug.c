@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
             {
                 printf("%04x: ", i*16);
                 for(int j = 0;j < 8;j++)
-                    printf("%02x%02x ", data[i*16+j*2], data[i*16+j*2+1]);
+                    printf("%02x%02x ", data[i*16+j*2]&255, data[i*16+j*2+1]&255);
                 printf("  ");
                 for(int j = 0;j < 8;j++)
                     printf("%c%c ", data[i*16+j*2]>=32?data[i*16+j*2]:46, data[i*16+j*2+1]>=32?data[i*16+j*2+1]:46);

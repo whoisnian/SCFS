@@ -34,21 +34,22 @@ int __inode_blockno_to_blockid(const inode_st *inode, unsigned int blockno)
     else if(blockno < 2066)
     {
         // inode 的 blockid1 列表，共 2 * 1024 个直接指向的 block，加上中间的 2 个和前面的 16 个
+        if((blockno-16)%1025 < 1) return -2;
         cur_blockid = inode->block_id1[(blockno-16)/1025];
         ret = read_block(cur_blockid, blockid, SC_BLOCK_SIZE);
         if(ret != 0) return -1;
-        if((blockno-16)%1025 < 1) return -2;
         cur_blockid = blockid[(blockno-16)%1025-1];
     }
     else if(blockno < 1051667)
     {
         // inode 的 blockid2 列表，共 1 * 1024 * 1024 个直接指向的 block，加上中间的 1 + 1024 个和前面的 2066 个
+        if(blockno == 2066) return -2;
+        if((blockno-2067)%1025 < 1) return -2;
         cur_blockid = inode->block_id2;
         ret = read_block(cur_blockid, blockid, SC_BLOCK_SIZE);
         if(ret != 0) return -1;
         ret = read_block(blockid[(blockno-2067)/1025], blockid, SC_BLOCK_SIZE);
         if(ret != 0) return -1;
-        if((blockno-2067)%1025 < 1) return -2;
         cur_blockid = blockid[(blockno-2067)%1025-1];
     }
     else
@@ -160,7 +161,7 @@ int __inode_add_new_item_to_inode(inodeid_t inodeid, const char *itemname, inode
             blockid_t mid2_blockid = blockid[(inode->blocknum-2068)/1025];
 
             read_block(mid2_blockid, blockid, SC_BLOCK_SIZE);
-            blockid[(inode->blocknum-2068)%1025] = new_blockid;
+            blockid[(inode->blocknum-2068)%1025-1] = new_blockid;
             write_block(mid2_blockid, blockid, SC_BLOCK_SIZE);
         }
         inode->size = inode->size + sizeof(dir_st);
@@ -186,14 +187,14 @@ int __inode_add_new_block_to_inode(inodeid_t inodeid, blockid_t *blockidres)
     write_block(*blockidres, &data, sizeof(data));
 
     blockid_t blockid[SC_BLOCK_SIZE/sizeof(blockid_t)];
-
+    
     inode->blocknum++;
     if(inode->blocknum <= 16)
     {
         // 直接
         inode->block_id0[inode->blocknum-1] = *blockidres;
     }
-    else if((inode->blocknum-17)%1025 < 1)
+    else if(inode->blocknum == 17||inode->blocknum == 1042)
     {
         // 间接的中间节点
         blockid_t mid_blockid = new_block();
@@ -249,7 +250,7 @@ int __inode_add_new_block_to_inode(inodeid_t inodeid, blockid_t *blockidres)
         blockid_t mid2_blockid = blockid[(inode->blocknum-2068)/1025];
 
         read_block(mid2_blockid, blockid, SC_BLOCK_SIZE);
-        blockid[(inode->blocknum-2068)%1025] = *blockidres;
+        blockid[(inode->blocknum-2068)%1025-1] = *blockidres;
         write_block(mid2_blockid, blockid, SC_BLOCK_SIZE);
     }
     write_inode(inodeid, inode);

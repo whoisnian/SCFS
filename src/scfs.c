@@ -269,7 +269,7 @@ int sc_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_
         else if(num < 2064)
             i = num + (num-16)/1024 + 1;
         else if(num < 1050640)
-            i = num + (num-2064)/1024 + 3;
+            i = num + (num-2064)/1024 + 4;
         else
             return -EFAULT;
         
@@ -284,17 +284,19 @@ int sc_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_
             ret = read_block(res, data, SC_BLOCK_SIZE);
             if(ret != 0) return -1;
 
-            if(size >= SC_BLOCK_SIZE)
+            if(size > 0)
             {
-                memcpy(buf+(ret_size-size), data+(offset%SC_BLOCK_SIZE), SC_BLOCK_SIZE);
+                if(size < SC_BLOCK_SIZE-(offset%SC_BLOCK_SIZE))
+                {
+                    memcpy(buf+(ret_size-size), data+(offset%SC_BLOCK_SIZE), size);
+                    size = 0;
+                }
+                else
+                {
+                    memcpy(buf+(ret_size-size), data+(offset%SC_BLOCK_SIZE), SC_BLOCK_SIZE-(offset%SC_BLOCK_SIZE));
+                    size = size-SC_BLOCK_SIZE+(offset%SC_BLOCK_SIZE);
+                }
                 offset = 0;
-                size -= SC_BLOCK_SIZE;
-            }
-            else if(size > 0)
-            {
-                memcpy(buf+(ret_size-size), data+(offset%SC_BLOCK_SIZE), size);
-                offset = 0;
-                size = 0;
             }
             else
             {
@@ -337,8 +339,8 @@ int sc_write(const char *path, const char *buf, size_t size, off_t offset, struc
     for(int i = ((offset+size+SC_BLOCK_SIZE-1)/SC_BLOCK_SIZE)-((len+SC_BLOCK_SIZE-1)/SC_BLOCK_SIZE);i > 0;i--)
     {
         ret = __inode_add_new_block_to_inode(cur_inodeid, &blockid);
-        if(ret != 0){
-            return ret;}
+        if(ret != 0)
+            return ret;
     }
 
     if(cur_inode != NULL)
@@ -359,7 +361,7 @@ int sc_write(const char *path, const char *buf, size_t size, off_t offset, struc
     else if(num < 2064)
         i = num + (num-16)/1024 + 1;
     else if(num < 1050640)
-        i = num + (num-2064)/1024 + 3;
+        i = num + (num-2064)/1024 + 4;
     else
         return -EFAULT;
 
@@ -374,17 +376,19 @@ int sc_write(const char *path, const char *buf, size_t size, off_t offset, struc
         ret = read_block(res, data, SC_BLOCK_SIZE);
         if(ret != 0) return -1;
 
-        if(size >= SC_BLOCK_SIZE)
+        if(size > 0)
         {
-            memcpy(data+(offset%SC_BLOCK_SIZE), buf+(ret_size-size), SC_BLOCK_SIZE);
+            if(size<SC_BLOCK_SIZE-(offset%SC_BLOCK_SIZE))
+            {
+                memcpy(data+(offset%SC_BLOCK_SIZE), buf+(ret_size-size), size);
+                size = 0;
+            }
+            else
+            {
+                memcpy(data+(offset%SC_BLOCK_SIZE), buf+(ret_size-size), SC_BLOCK_SIZE-(offset%SC_BLOCK_SIZE));
+                size = size-SC_BLOCK_SIZE+(offset%SC_BLOCK_SIZE);
+            }
             offset = 0;
-            size -= SC_BLOCK_SIZE;
-        }
-        else if(size > 0)
-        {
-            memcpy(data+(offset%SC_BLOCK_SIZE), buf+(ret_size-size), size);
-            offset = 0;
-            size = 0;
         }
         else
         {
@@ -507,7 +511,7 @@ int sc_rename(const char *from, const char *to, unsigned int flags)
                 else if(num < 2064)
                     k = num + (num-16)/1024 + 1;
                 else if(num < 1050640)
-                    k = num + (num-2064)/1024 + 3;
+                    k = num + (num-2064)/1024 + 4;
                 else
                     return -EFAULT;
 
@@ -532,7 +536,7 @@ int sc_rename(const char *from, const char *to, unsigned int flags)
                 else if(num2 < 2064)
                     k2 = num2 + (num2-16)/1024 + 1;
                 else if(num2 < 1050640)
-                    k2 = num2 + (num2-2064)/1024 + 3;
+                    k2 = num2 + (num2-2064)/1024 + 4;
                 else
                     return -EFAULT;
                 cur_inode->blocknum = k2 + 1;
