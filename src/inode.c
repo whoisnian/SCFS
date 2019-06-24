@@ -534,6 +534,19 @@ int delete_inode(inodeid_t inodeid, int option)
                         delete_inode(dir[j].inodeid, 1);
                 }
             }
+            // 释放中间block
+            if(cur_inode->blocknum > 16)
+                free_block(cur_inode->block_id1[0]);
+            if(cur_inode->blocknum > 1041)
+                free_block(cur_inode->block_id1[1]);
+            if(cur_inode->blocknum > 2066)
+            {
+                blockid_t blockid = cur_inode->block_id2;
+                read_block(blockid, mid_blockid, SC_BLOCK_SIZE);
+                for(int j = (cur_inode->blocknum-2068)/1025;j >= 0;j--)
+                    free_block(mid_blockid[j]);
+                free_block(cur_inode->block_id2);
+            }
             free_inode(inodeid);
         }
         else if(cur_inode->blocknum == 0)
