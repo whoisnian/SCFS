@@ -261,7 +261,7 @@ int __inode_add_new_block_to_inode(inodeid_t inodeid, blockid_t *blockidres)
 }
 
 int __data_inode(inodeid_t inodeid, const char *data, int loc_begin)//现在loc_begin只能为0
-{ // bug较多，待修改
+{ // 剩余少量bug，待修改
     inode_st *cur_inode=read_inode(inodeid);
     blockid_t mid_blockid[SC_BLOCK_SIZE/sizeof(blockid_t)],mid2_blockid[SC_BLOCK_SIZE/sizeof(blockid_t)];//1024
     if((cur_inode->mode&SC_LNK)==SC_LNK)
@@ -277,8 +277,9 @@ int __data_inode(inodeid_t inodeid, const char *data, int loc_begin)//现在loc_
     }
     int len_data=strlen(data);
     int len_block=(len_data+SC_BLOCK_SIZE-1)/SC_BLOCK_SIZE;
+    //printf("%d %d %d\n",len_data,len_data+SC_BLOCK_SIZE-1,len_block);
     if(read_block_free()<len_block+(len_block-16+1023)/1024+(len_block>2080)){//判断剩余块数是否足够
-        return -2;
+        printf("free block not enough: res %d blocks,need %d blocks\n",read_block_free(),len_block+(len_block-16+1023)/1024+(len_block>2080));return -2;
     }
     int i,j,now_loc = 0;
     blockid_t tmp_block,mid_block,mid2_block;
@@ -295,9 +296,10 @@ int __data_inode(inodeid_t inodeid, const char *data, int loc_begin)//现在loc_
             write_block(tmp_block,data+now_loc,SC_BLOCK_SIZE);
         }else{
             write_block(tmp_block,data+now_loc,len_data-now_loc);
+            write_inode(inodeid,cur_inode);
             return 0;
         }   
-        data+=now_loc;
+        now_loc+=SC_BLOCK_SIZE;
     }
     mid_block=new_block();
     if(mid_block==-1){
@@ -319,9 +321,10 @@ int __data_inode(inodeid_t inodeid, const char *data, int loc_begin)//现在loc_
         }else{
             write_block(tmp_block,data+now_loc,len_data-now_loc);
             write_block(mid_block,mid_blockid,SC_BLOCK_SIZE);
+            write_inode(inodeid,cur_inode);
             return 0;
         }   
-        data+=now_loc;  
+        now_loc+=SC_BLOCK_SIZE;
     }
     write_block(mid_block,mid_blockid,SC_BLOCK_SIZE);
     mid_block=new_block();
@@ -344,9 +347,10 @@ int __data_inode(inodeid_t inodeid, const char *data, int loc_begin)//现在loc_
         }else{
             write_block(tmp_block,data+now_loc,len_data-now_loc);
             write_block(mid_block,mid_blockid,SC_BLOCK_SIZE);
+            write_inode(inodeid,cur_inode);
             return 0;
         }   
-        data+=now_loc;  
+        now_loc+=SC_BLOCK_SIZE;
     }
     write_block(mid_block,mid_blockid,SC_BLOCK_SIZE);
     mid_block=new_block();
@@ -379,16 +383,15 @@ int __data_inode(inodeid_t inodeid, const char *data, int loc_begin)//现在loc_
                 write_block(tmp_block,data+now_loc,len_data-now_loc);
                 write_block(mid_block,mid_blockid,SC_BLOCK_SIZE);
                 write_block(mid2_block,mid2_blockid,SC_BLOCK_SIZE);
+                write_inode(inodeid,cur_inode);
                 return 0;
             }   
-            data+=now_loc;
+            now_loc+=SC_BLOCK_SIZE;
         }
         write_block(mid2_block,mid2_blockid,SC_BLOCK_SIZE);
     }
     write_block(mid_block,mid_blockid,SC_BLOCK_SIZE);
     return -3;//到这里还没保存完，说明空间不够，不过理论上不会到这里
-    
-    return 0;
 }
 
 void __clear_inode(inode_st* inode)
@@ -533,19 +536,6 @@ int delete_inode(inodeid_t inodeid, int option)
                     if(strcmp(dir[j].filename, ".")&&strcmp(dir[j].filename, ".."))
                         delete_inode(dir[j].inodeid, 1);
                 }
-            }
-            // 释放中间block
-            if(cur_inode->blocknum > 16)
-                free_block(cur_inode->block_id1[0]);
-            if(cur_inode->blocknum > 1041)
-                free_block(cur_inode->block_id1[1]);
-            if(cur_inode->blocknum > 2066)
-            {
-                blockid_t blockid = cur_inode->block_id2;
-                read_block(blockid, mid_blockid, SC_BLOCK_SIZE);
-                for(int j = (cur_inode->blocknum-2068)/1025;j >= 0;j--)
-                    free_block(mid_blockid[j]);
-                free_block(cur_inode->block_id2);
             }
             free_inode(inodeid);
         }
