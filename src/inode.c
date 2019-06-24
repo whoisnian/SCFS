@@ -428,7 +428,7 @@ int get_parent_path(const char *path, char *parent_path)
     }
     else
     {
-        for(int i = strlen(path)-1;i > 0;i--)
+        for(int i = strlen(path)-1;i >= 0;i--)
         {
             if(path[i] == '/')
             {
