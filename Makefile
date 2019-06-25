@@ -28,8 +28,8 @@ test_fuse: src/debugprintf.c src/image.c src/bitmap.c src/superblock.c src/block
 test_debug: src/debugprintf.c src/image.c src/bitmap.c src/superblock.c src/block.c src/inode.c src/scfs.c test/test_debug.c
 	$(CC) $(CFLAGS) $^ -I$(IDIR) `pkg-config fuse3 --cflags --libs` -o $(ODIR)/$@
 
-test_screen:src/screen.c
-	$(CC) $(CFLAGS) $^ -I$(IDIR) -o $(ODIR)/$@ -lncurses
+test_screen: src/debugprintf.c src/image.c src/bitmap.c src/superblock.c src/block.c src/inode.c src/scfs.c src/screen.c
+	$(CC) $(CFLAGS) $^ -I$(IDIR) `pkg-config fuse3 --cflags --libs` -o $(ODIR)/$@ -lncurses
 
 clean:
 	-rm $(ODIR)/*

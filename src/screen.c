@@ -5,8 +5,12 @@
 #include <stdio.h>
 #include<math.h>
 #include<string.h>
-int min(int x,int y){return x<y?x:y;}
-int max(int x,int y){return x>y?x:y;}
+#include "definition.h"
+#include "scfs.h"
+typedef struct screen_user{
+  char username[64],password[64];
+};
+
 char* vi(char* prech)//文本输入器
 {
   int key=0,x=0,y=0;
@@ -191,10 +195,70 @@ char* vi(char* prech)//文本输入器
   endwin();
   exit(EXIT_SUCCESS);
 }
+
+int init(){
+  char buf[SC_BLOCK_SIZE];
+  char path[128];
+  int ret;
+  struct screen_user user;
+  memset(buf,0,sizeof(buf));
+  memset(path,0,sizeof(path));
+  strcpy(path,"userinfo");
+  ret=sc_create(path,SC_DEFAULT_FILE,NULL);
+  
+  if(ret!=0)
+  {
+    printf("creat file failed in function init,line__LINE__\n");
+    return -1;
+  }
+  
+}
+
+int login()
+{
+  char buf[SC_BLOCK_SIZE];
+  char path[128];
+  memset(buf,0,sizeof(buf));
+  memset(path,0,sizeof(path));
+  strcpy(path,"userinfo");
+  sc_read(path,buf,SC_BLOCK_SIZE,0,NULL);
+  if(strlen(buf)==0){
+    init();
+    sc_read(path,buf,SC_BLOCK_SIZE,0,NULL);
+  }
+
+  do
+  {
+    printf("username : ");
+  }while(1);
+
+}
+
+int terminal()
+{
+
+}
+
 int main()
 {
-  char* ch=NULL;
-  ch=vi(ch);
-  printf("(%d)%s\n",strlen(ch),ch);
+  int ret;
+  ret = init_scfs("test.img");
+  if(ret!=0)
+  {
+    printf("init scfs failed in function main,line__LINE__\n");
+    return 0;
+  }
+  ret = open_scfs("test.img");
+  if(ret!=0){
+    printf("open scfs failed in function main,line__LINE__\n");
+    return 0;
+  }
+  login();
+  terminal();
+  ret=close_scfs();
+  if(ret!=0){
+    printf("close scfs failed in function main,line__LINE__\n");
+    return 0;
+  }
   return 0;
 }

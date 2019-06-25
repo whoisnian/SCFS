@@ -47,9 +47,6 @@ void __clear_inode(inode_st* inode);
 // 根据绝对路径获取上级目录的绝对路径
 int get_parent_path(const char *path, char *parent_path);
 
-// 从父级目录中删除该路径对应项
-int delete_from_parent(const char *path);
-
 // 初始化inode
 int init_inode(inodeid_t inodeid);
 
@@ -68,7 +65,7 @@ int data_inode(inodeid_t inodeid, const char *data);
 // 删除一个inode(内部判断是文件，软链接还是目录)
 // option:
 //  1: 递归删除，对于文件删除其内容及该inode，对于目录递归删除所有子项及该inode
-//  0: 非递归删除，对于文件删除其内容及该inode，对于空目录删除该inode，对于非空目录返回-1错误码
+//  0: 非递归删除，对于文件删除其内容及该inode，对于空目录删除及该inode，对于非空目录返回-1错误码
 int delete_inode(inodeid_t inodeid, int option);
 
 // 释放一个inode，即修改其对应的bitmap，并调整superblock中的记录
