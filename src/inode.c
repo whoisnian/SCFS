@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 #include "image.h"
 #include "bitmap.h"
 #include "inode.h"
@@ -435,6 +436,132 @@ int get_parent_path(const char *path, char *parent_path)
             }
         }
     }
+    return 0;
+}
+
+int delete_from_parent(const char *path)
+{
+    inodeid_t cur_inodeid, parent_inodeid;
+    inode_st *cur_inode, *parent_inode;
+    char parent_path[SC_PATH_MAX];
+    dir_st dir[15], dir2[15];
+    int ret, res;
+
+    ret = find_inode(path, &cur_inodeid);
+    if(ret != 0)
+        return -ENOENT;
+
+    memset(parent_path, 0, sizeof(parent_path));
+    get_parent_path(path, parent_path);
+    ret = find_inode(parent_path, &parent_inodeid);
+    if(ret != 0)
+        return -ENOENT;
+
+    cur_inode = read_inode(cur_inodeid);
+    if(cur_inode == NULL)
+        return -1;
+    
+    parent_inode = read_inode(parent_inodeid);
+    char filename[SC_PATH_MAX];
+    strcpy(filename, path+strlen(parent_path)+(parent_path[strlen(parent_path)-1]=='/'?0:1));
+    if(filename[strlen(filename)-1] == '/')
+        filename[strlen(filename)-1] = '\0';
+
+    if(parent_inode->size/sizeof(dir_st) == 1)
+    {
+        parent_inode->size = 0;
+        parent_inode->blocknum = 0;
+        free_block(parent_inode->block_id0[0]);
+    }
+    else
+    {
+        int ok = 1;
+        for(int i = 0;ok&&i < parent_inode->blocknum;i++)
+        {
+            res = __inode_blockno_to_blockid(parent_inode, i);
+            if(res == -1)
+                return -1;
+            else if(res == -2)
+                continue;
+            
+            ret = read_block(res, dir, sizeof(dir_st)*15);
+            if(ret != 0) return -1;
+
+            for(int j = 0;ok&&((j < 15&&i < parent_inode->blocknum-1)||j < parent_inode->size/sizeof(dir_st)%15);j++)
+            {
+                if(!strcmp(dir[j].filename, filename))
+                {
+                    // 找到最后位置上的dir_st
+                    int num = (parent_inode->size/sizeof(dir_st)-1)/15;
+                    int k;
+                    if(num < 16)
+                        k = num;
+                    else if(num < 2064)
+                        k = num + (num-16)/1024 + 1;
+                    else if(num < 1050640)
+                        k = num + (num-2064)/1024 + 4;
+                    else
+                        return -EFAULT;
+
+                    int res2 = __inode_blockno_to_blockid(parent_inode, k);
+                    if(res2 == -1)
+                        return -1;
+
+                    ret = read_block(res2, dir2, sizeof(dir_st)*15);
+                    if(ret != 0) return -1;
+
+                    // 放到当前位置上
+                    dir[j].inodeid = dir2[(parent_inode->size/sizeof(dir_st)-1)%15].inodeid;
+                    strcpy(dir[j].filename, dir2[(parent_inode->size/sizeof(dir_st)-1)%15].filename);
+                    write_block(res, dir, sizeof(dir_st)*15);
+
+                    // 修改inode属性
+                    parent_inode->size -= sizeof(dir_st);
+                    int num2 = (parent_inode->size/sizeof(dir_st)-1)/15;
+                    int k2;
+                    if(num2 < 16)
+                        k2 = num2;
+                    else if(num2 < 2064)
+                        k2 = num2 + (num2-16)/1024 + 1;
+                    else if(num2 < 1050640)
+                        k2 = num2 + (num2-2064)/1024 + 4;
+                    else
+                        return -EFAULT;
+                    parent_inode->blocknum = k2 + 1;
+
+                    for(;k > k2;k--)
+                    {
+                        int res = __inode_blockno_to_blockid(parent_inode, k);
+                        if(res >= 0)
+                            free_block(res);
+                        else if(res == -2)
+                        {
+                            if(k == 16)
+                                free_block(parent_inode->block_id1[0]);
+                            else if(k == 1041)
+                                free_block(parent_inode->block_id1[1]);
+                            else if(k == 2066)
+                                free_block(parent_inode->block_id2);
+                            else if(k > 2066&&(k-2067)%1025 < 1)
+                            {
+                                blockid_t blockid = parent_inode->block_id2;
+                                blockid_t mid_blockid[SC_BLOCK_SIZE/sizeof(blockid_t)];
+                                read_block(blockid, mid_blockid, SC_BLOCK_SIZE);
+                                free_block(mid_blockid[(k-2067)%1025]);
+                            }
+                        }
+                    }
+                    ok = 0;
+                }
+            }
+        }
+    }
+    write_inode(parent_inodeid, parent_inode);
+
+    if(cur_inode != NULL)
+        free(cur_inode);
+    if(parent_inode != NULL)
+        free(parent_inode);
     return 0;
 }
 

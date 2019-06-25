@@ -455,7 +455,8 @@ int sc_chmod(const char *path, mode_t mode, struct fuse_file_info *fi)
 int sc_rename(const char *from, const char *to, unsigned int flags)
 {
     (void) flags;
-    inodeid_t cur_inodeid, from_parent_inodeid, to_parent_inodeid;
+    inode_st *cur_inode;
+    inodeid_t cur_inodeid, to_parent_inodeid;
     int ret, res;
 
     // 检查from路径和to路径是否存在
@@ -463,8 +464,7 @@ int sc_rename(const char *from, const char *to, unsigned int flags)
     if(ret == 0)
         return -EEXIST;
     
-    char from_parent_path[SC_PATH_MAX], to_parent_path[SC_PATH_MAX];
-    memset(from_parent_path, 0, sizeof(from_parent_path));
+    char to_parent_path[SC_PATH_MAX];
     memset(to_parent_path, 0, sizeof(to_parent_path));
     get_parent_path(to, to_parent_path);
     ret = find_inode(to_parent_path, &to_parent_inodeid);
@@ -475,112 +475,22 @@ int sc_rename(const char *from, const char *to, unsigned int flags)
     if(ret != 0)
         return -ENOENT;
 
-    get_parent_path(from, from_parent_path);
-    ret = find_inode(from_parent_path, &from_parent_inodeid);
+    // 从from路径的父级目录中删除
+    ret = delete_from_parent(from);
     if(ret != 0)
-        return -ENOENT;
-
-    // 从from路径的父级目录中移除from
-    dir_st dir[15], dir2[15];
-    inode_st *cur_inode = read_inode(from_parent_inodeid);
-    char filename[SC_PATH_MAX];
-    strcpy(filename, from+strlen(from_parent_path)+(from_parent_path[strlen(from_parent_path)-1]=='/'?0:1));
-    if(filename[strlen(filename)-1] == '/')
-        filename[strlen(filename)-1] = '\0';
-    int ok = 1;
-    for(int i = 0;ok&&i < cur_inode->blocknum;i++)
-    {
-        res = __inode_blockno_to_blockid(cur_inode, i);
-        if(res == -1)
-            return -1;
-        else if(res == -2)
-            continue;
-        
-        ret = read_block(res, dir, sizeof(dir_st)*15);
-        if(ret != 0) return -1;
-
-        for(int j = 0;ok&&((j < 15&&i < cur_inode->blocknum-1)||j < cur_inode->size/sizeof(dir_st)%15);j++)
-        {
-            if(!strcmp(dir[j].filename, filename))
-            {
-                // 找到最后位置上的dir_st
-                int num = (cur_inode->size/sizeof(dir_st)-1)/15;
-                int k;
-                if(num < 16)
-                    k = num;
-                else if(num < 2064)
-                    k = num + (num-16)/1024 + 1;
-                else if(num < 1050640)
-                    k = num + (num-2064)/1024 + 4;
-                else
-                    return -EFAULT;
-
-                int res2 = __inode_blockno_to_blockid(cur_inode, k);
-                if(res2 == -1)
-                    return -1;
-
-                ret = read_block(res2, dir2, sizeof(dir_st)*15);
-                if(ret != 0) return -1;
-
-                // 放到当前位置上
-                dir[j].inodeid = dir2[(cur_inode->size/sizeof(dir_st)-1)%15].inodeid;
-                strcpy(dir[j].filename, dir2[(cur_inode->size/sizeof(dir_st)-1)%15].filename);
-                write_block(res, dir, sizeof(dir_st)*15);
-
-                // 修改inode属性
-                cur_inode->size -= sizeof(dir_st);
-                int num2 = (cur_inode->size/sizeof(dir_st)-1)/15;
-                int k2;
-                if(num2 < 16)
-                    k2 = num2;
-                else if(num2 < 2064)
-                    k2 = num2 + (num2-16)/1024 + 1;
-                else if(num2 < 1050640)
-                    k2 = num2 + (num2-2064)/1024 + 4;
-                else
-                    return -EFAULT;
-                cur_inode->blocknum = k2 + 1;
-
-                for(;k > k2;k--)
-                {
-                    int res = __inode_blockno_to_blockid(cur_inode, k);
-                    if(res >= 0)
-                        free_block(res);
-                    else if(res == -2)
-                    {
-                        if(k == 16)
-                            free_block(cur_inode->block_id1[0]);
-                        else if(k == 1041)
-                            free_block(cur_inode->block_id1[1]);
-                        else if(k == 2066)
-                            free_block(cur_inode->block_id2);
-                        else if(k > 2066&&(k-2067)%1025 < 1)
-                        {
-                            blockid_t blockid = cur_inode->block_id2;
-                            blockid_t mid_blockid[SC_BLOCK_SIZE/sizeof(blockid_t)];
-                            read_block(blockid, mid_blockid, SC_BLOCK_SIZE);
-                            free_block(mid_blockid[(k-2067)%1025]);
-                        }
-                    }
-                }
-                ok = 0;
-            }
-        }
-    }
-    write_inode(from_parent_inodeid, cur_inode);
-    if(cur_inode != NULL)
-        free(cur_inode);
-    cur_inode = NULL;
+        return ret;
 
     // 向to路径的父级目录中加入cur_inodeid
     inodeid_t inodeidres;
+    dir_st dir[15];
+    char filename[SC_PATH_MAX];
     strcpy(filename, to+strlen(to_parent_path)+(to_parent_path[strlen(to_parent_path)-1]=='/'?0:1));
     if(filename[strlen(filename)-1] == '/')
         filename[strlen(filename)-1] = '\0';
     __inode_add_new_item_to_inode(to_parent_inodeid, filename, &inodeidres);
 
     cur_inode = read_inode(to_parent_inodeid);
-    ok = 1;
+    int ok = 1;
     for(int i = 0;ok&&i < cur_inode->blocknum;i++)
     {
         res = __inode_blockno_to_blockid(cur_inode, i);
@@ -625,4 +535,66 @@ int sc_statfs(const char *path, struct statvfs *stbuf)
     if(superblock != NULL)
         free(superblock);
     return 0;
+}
+
+int sc_unlink(const char *path)
+{
+    debug_printf(debug_info, "unlink %s\n", path);
+    inodeid_t cur_inodeid;
+    inode_st *cur_inode;
+    int ret;
+
+    ret = find_inode(path, &cur_inodeid);
+    if(ret != 0)
+        return -ENOENT;
+
+    cur_inode = read_inode(cur_inodeid);
+    if(cur_inode == NULL)
+        return -1;
+
+    if((cur_inode->mode&SC_DIR)==SC_DIR)
+    {
+        ret = -EISDIR;
+    }
+    else
+    {
+        ret = delete_from_parent(path);
+        if(ret != 0) return ret;
+        ret = delete_inode(cur_inodeid, 0);
+    }
+
+    if(cur_inode != NULL)
+        free(cur_inode);
+    return ret;
+}
+
+int sc_rmdir(const char *path)
+{
+    debug_printf(debug_info, "rmdir %s\n", path);
+    inodeid_t cur_inodeid;
+    inode_st *cur_inode;
+    int ret;
+
+    ret = find_inode(path, &cur_inodeid);
+    if(ret != 0)
+        return -ENOENT;
+
+    cur_inode = read_inode(cur_inodeid);
+    if(cur_inode == NULL)
+        return -1;
+
+    if((cur_inode->mode&SC_DIR)!=SC_DIR)
+    {
+        ret = -ENOTDIR;
+    }
+    else
+    {
+        ret = delete_from_parent(path);
+        if(ret != 0) return ret;
+        ret = delete_inode(cur_inodeid, 0);
+    }
+
+    if(cur_inode != NULL)
+        free(cur_inode);
+    return ret;
 }

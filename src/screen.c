@@ -3,13 +3,13 @@
 #include <curses.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include<math.h>
-#include<string.h>
+#include <math.h>
+#include <string.h>
 #include "definition.h"
 #include "scfs.h"
 typedef struct screen_user{
   char username[64],password[64];
-};
+}screen_user;
 
 char* vi(char* prech)//文本输入器
 {
