@@ -43,6 +43,7 @@ int main(int argc, char *argv[])
         .statfs = sc_statfs,
         .unlink = sc_unlink,
         .rmdir = sc_rmdir,
+        .access = sc_access,
     };
 
     ret = fuse_main(argc, argv, &sc_op, NULL);

@@ -20,6 +20,9 @@
 #include "scfs.h"
 #include "debugprintf.h"
 
+unsigned int cur_user_id = 1000;
+unsigned int cur_group_id = 1000;
+
 int init_scfs(const char *filepath)
 {
     int ret;
@@ -133,6 +136,7 @@ int close_scfs(void)
 
 void *sc_init(struct fuse_conn_info *conn, struct fuse_config *cfg)
 {
+    debug_printf(debug_info, "Call sc_init()\n");
     (void) conn;
     (void) cfg;
     return NULL;
@@ -596,5 +600,33 @@ int sc_rmdir(const char *path)
 
     if(cur_inode != NULL)
         free(cur_inode);
+    return ret;
+}
+
+int sc_access(const char *path, int mask)
+{
+    debug_printf(debug_info, "Call access(path: %s, mask: %d)\n", path, mask);
+    inodeid_t cur_inodeid;
+    inode_st *cur_inode;
+    int ret;
+
+    ret = find_inode(path, &cur_inodeid);
+    if(ret != 0)
+        return -ENOENT;
+
+    cur_inode = read_inode(cur_inodeid);
+    if(cur_inode == NULL)
+        return -1;
+    
+    
+    if(cur_user_id == cur_inode->user)
+        mask = mask << 6;
+    else if(cur_group_id == cur_inode->group)
+        mask = mask << 3;
+
+    ret = -1;
+    if((cur_inode->mode&mask)==mask)
+        ret = 0;
+
     return ret;
 }

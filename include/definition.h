@@ -50,6 +50,11 @@ typedef unsigned int blockid_t;
 #define SC_DEFAULT_DIR (SC_DIR|SC_USR_ALL|SC_GRP_R|SC_GRP_X|SC_OTH_R|SC_OTH_X)
 #define SC_DEFAULT_FILE (SC_REG|SC_USR_R|SC_USR_W|SC_GRP_R|SC_OTH_R)
 
+#define SC_R_OK 4       // 测试是否具有读取权限
+#define SC_W_OK 2       // 测试是否具有写入权限
+#define SC_X_OK 1       // 测试是否具有执行权限
+#define SC_F_OK 0       // 测试是否存在
+
 // 根用户
 #define SC_ROOT_UID 0
 #define SC_ROOT_GID 0
