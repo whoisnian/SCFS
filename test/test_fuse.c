@@ -41,6 +41,8 @@ int main(int argc, char *argv[])
         .chmod = sc_chmod,
         .rename = sc_rename,
         .statfs = sc_statfs,
+        .unlink = sc_unlink,
+        .rmdir = sc_rmdir,
     };
 
     ret = fuse_main(argc, argv, &sc_op, NULL);

@@ -24,14 +24,16 @@ int sc_create(const char *path, mode_t mode, struct fuse_file_info *fi);
 int sc_chmod(const char *path, mode_t mode, struct fuse_file_info *fi);
 int sc_rename(const char *from, const char *to, unsigned int flags);
 int sc_statfs(const char *path, struct statvfs *stbuf);
+int sc_unlink(const char *path);
+int sc_rmdir(const char *path);
 
 /*
 //int (*getattr) (const char *, struct stat *, struct fuse_file_info *fi);
 int (*readlink) (const char *, char *, size_t);
 int (*mknod) (const char *, mode_t, dev_t);
 //int (*mkdir) (const char *, mode_t);
-int (*unlink) (const char *);
-int (*rmdir) (const char *);
+//int (*unlink) (const char *);
+//int (*rmdir) (const char *);
 int (*symlink) (const char *, const char *);
 //int (*rename) (const char *, const char *, unsigned int flags);
 int (*link) (const char *, const char *);
