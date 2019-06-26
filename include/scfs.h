@@ -12,6 +12,18 @@ int init_scfs(const char *filepath);
 int open_scfs(const char *filepath);
 int close_scfs(void);
 
+// 返回值为0表示成功，非0表示失败
+int run_command(const char *cmd);
+int command_login(const char *username, const char *password);
+int command_passwd(const char *username, const char *password);
+int command_useradd(const char *username);
+int command_userdel(const char *username);
+int command_groupadd(const char *groupname);
+int command_groupdel(const char *groupname);
+int command_gpasswd(const char *username, const char *groupname);
+
+int sc_filler(void *buf, const char *name, const struct stat *stbuf, off_t off, enum fuse_fill_dir_flags flags);
+
 void *sc_init(struct fuse_conn_info *conn, struct fuse_config *cfg);
 int sc_getattr(const char *path, struct stat *buf, struct fuse_file_info *fi);
 int sc_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi, enum fuse_readdir_flags flags);

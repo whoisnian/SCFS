@@ -58,10 +58,11 @@ typedef unsigned int blockid_t;
 #define SC_X_OK 1       // 测试是否具有执行权限
 #define SC_F_OK 0       // 测试是否存在
 
-// 根用户
-#define SC_ROOT_UID 0
-#define SC_ROOT_GID 0
-#define SC_ROOT_USERNAME "root"
+// 默认访客用户id和组id
+#define SC_GUEST_USER_ID 2000
+#define SC_GUEST_GROUP_ID 2000
+
+// 默认根用户密码
 #define SC_ROOT_PASSWORD "toor"
 
 typedef unsigned int userid_t;

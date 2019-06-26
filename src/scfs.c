@@ -20,8 +20,8 @@
 #include "scfs.h"
 #include "debugprintf.h"
 
-unsigned int cur_user_id = 1000;
-unsigned int cur_group_id = 1000;
+unsigned int cur_user_id = SC_GUEST_USER_ID;
+unsigned int cur_group_id = SC_GUEST_GROUP_ID;
 
 int init_scfs(const char *filepath)
 {
@@ -64,8 +64,8 @@ int init_scfs(const char *filepath)
         return -1;
 
     inode->mode = SC_DEFAULT_DIR;
-    inode->user = SC_ROOT_UID;
-    inode->group = SC_ROOT_GID;
+    inode->user = 0;
+    inode->group = 0;
     inode->size = sizeof(dir_st);
     inode->blocknum = 1;
     inode->linknum = 1;
@@ -100,6 +100,42 @@ int init_scfs(const char *filepath)
     ret = write_bitmap(superblock->first_block_bitmap, superblock->first_block-1, 0, 1);
     if(ret != 0)
         return ret;
+    
+    // 初始化用户认证相关文件
+    char tmp[128];
+    if(sc_access("/.passwd", SC_F_OK) != 0)
+    {
+        sc_create("/.passwd", SC_REG|SC_USR_R|SC_USR_W|SC_GRP_R|SC_OTH_R, NULL);
+        // username:x:uid:gid:::
+        // root:x:0:0:::
+        memset(tmp, 0, sizeof(tmp));
+        strcpy(tmp, "root:x:0:0:::\n");
+        sc_write("/.passwd", tmp, strlen(tmp), 0, NULL);
+    }
+    if(sc_access("/.group", SC_F_OK) != 0)
+    {
+        sc_create("/.group", SC_REG|SC_USR_R|SC_USR_W|SC_GRP_R|SC_OTH_R, NULL);
+        // groupname:x:gid:
+        // root:x:0:
+        memset(tmp, 0, sizeof(tmp));
+        strcpy(tmp, "root:x:0:\n");
+        sc_write("/.group", tmp, strlen(tmp), 0, NULL);
+    }
+    if(sc_access("/.shadow", SC_F_OK) != 0)
+    {
+        sc_create("/.shadow", SC_REG|SC_USR_R|SC_USR_W, NULL);
+        // username:password
+        // root:toor
+        memset(tmp, 0, sizeof(tmp));
+        strcpy(tmp, "root:");
+        strcat(tmp, SC_ROOT_PASSWORD);
+        strcat(tmp, "\n");
+        sc_write("/.shadow", tmp, strlen(tmp), 0, NULL);
+    }
+    if(sc_access("/.run_command", SC_F_OK) != 0)
+    {
+        sc_create("/.run_command", SC_REG|SC_USR_W|SC_GRP_W|SC_OTH_W, NULL);
+    }
 
     return 0;
 }
@@ -132,6 +168,207 @@ int open_scfs(const char *filepath)
 int close_scfs(void)
 {
     return close_image();
+}
+
+int run_command(const char *cmd)
+{
+    debug_printf(debug_info, "run_command %s\n", cmd);
+    if(cmd == NULL||strlen(cmd) <= 1)
+        return -1;
+    char *oricmd, *subcmd;
+    char *username, *password, *groupname;
+    oricmd = (char *)malloc(sizeof(char)*(strlen(cmd)+1));
+    strcpy(oricmd, cmd);
+
+    subcmd = strtok(oricmd, " ");
+    if(subcmd != NULL)
+    {
+        if(!strcmp(subcmd, "login"))
+        {
+            // 登录
+            // login username password
+            username = strtok(NULL, " ");
+            password = strtok(NULL, " ");
+            return command_login(username, password);
+        }
+        else if(!strcmp(subcmd, "passwd"))
+        {
+            // 修改密码
+            // passwd username password
+            username = strtok(NULL, " ");
+            password = strtok(NULL, " ");
+            return command_passwd(username, password);
+        }
+        else if(!strcmp(subcmd, "useradd"))
+        {
+            // 新建用户
+            // useradd username
+            username = strtok(NULL, " ");
+            return command_useradd(username);
+        }
+        else if(!strcmp(subcmd, "userdel"))
+        {
+            // 删除用户
+            // userdel username
+            username = strtok(NULL, " ");
+            return command_userdel(username);
+        }
+        else if(!strcmp(subcmd, "groupadd"))
+        {
+            // 新建组
+            // groupadd groupname
+            groupname = strtok(NULL, " ");
+            return command_groupadd(groupname);
+        }
+        else if(!strcmp(subcmd, "groupdel"))
+        {
+            // 删除组
+            // groupdel groupname
+            groupname = strtok(NULL, " ");
+            return command_groupdel(groupname);
+        }
+        else if(!strcmp(subcmd, "gpasswd"))
+        {
+            // 修改用户所属组
+            // gpasswd username groupname
+            username = strtok(NULL, " ");
+            groupname = strtok(NULL, " ");
+            return command_gpasswd(username, groupname);
+        }
+    }
+    return -1;
+}
+
+int command_login(const char *username, const char *password)
+{
+    if(username == NULL||password == NULL) return -1;
+    char buf[4096], *subbuf, userpass[4096];
+    char buf2[4096], *subbuf2;
+    memset(buf, 0, sizeof(buf));
+    memset(userpass, 0, sizeof(userpass));
+
+    strcpy(userpass, username);
+    strcat(userpass, ":");
+    strcat(userpass, password);
+
+    int ret = sc_read("/.shadow", buf, 4096, 0, NULL);
+    if(ret < 0) return ret;
+
+    subbuf = strtok(buf, "\n");
+    while(subbuf != NULL)
+    {
+        if(!strcmp(userpass, subbuf))
+        {
+            memset(buf2, 0, sizeof(buf2));
+            sc_read("/.passwd", buf2, 4096, 0, NULL);
+            subbuf2 = strtok(buf2, "\n");
+            while(subbuf2 != NULL)
+            {
+                if(!strncmp(username, subbuf2, strlen(username)))
+                {
+                    unsigned int uid = SC_GUEST_USER_ID, gid=SC_GUEST_GROUP_ID;
+                    char formatstr[4096];
+                    strcpy(formatstr, username);
+                    strcat(formatstr, ":x:%u:%u:::");
+                    sscanf(subbuf2, formatstr, &uid, &gid);
+                    cur_user_id = uid;
+                    cur_group_id = gid;
+                    return strlen(username)+strlen(password)+7;
+                }
+                subbuf2 = strtok(NULL, "\n");
+            }
+            return -1;
+        }
+        subbuf = strtok(NULL, "\n");
+    }
+    return -1;
+}
+
+int command_passwd(const char *username, const char *password)
+{
+    if(username == NULL||password == NULL) return -1;
+    char buf[4096], *subbuf;
+    memset(buf, 0, sizeof(buf));
+
+    unsigned int uid = SC_GUEST_USER_ID;
+    if(cur_user_id != 0)
+    {
+        int ret = sc_read("/.passwd", buf, 4096, 0, NULL);
+        if(ret < 0) return ret;
+
+        subbuf = strtok(buf, "\n");
+        while(subbuf != NULL)
+        {
+            if(!strncmp(username, subbuf, strlen(username)))
+            {
+                char formatstr[4096];
+                strcpy(formatstr, username);
+                strcat(formatstr, ":x:%u:%*u:::");
+                sscanf(subbuf, formatstr, &uid);
+                break;
+            }
+            subbuf = strtok(NULL, "\n");
+        }
+    }
+
+    if(cur_user_id != uid&&cur_user_id != 0)
+        return -1;
+    
+    memset(buf, 0, sizeof(buf));
+    int ret = sc_read("/.shadow", buf, 4096, 0, NULL);
+    if(ret < 0) return ret;
+
+    char userpass[4096];
+    memset(userpass, 0, sizeof(userpass));
+    strcpy(userpass, username);
+    strcat(userpass, ":");
+    strcat(userpass, password);
+
+    // todo 修改buf
+
+    sc_write("/.shadow", buf, 4096, 0, NULL);
+
+    return strlen(username)+strlen(password)+8;
+}
+
+int command_useradd(const char *username)
+{
+    if(username == NULL) return -1;
+    return 0;
+}
+
+int command_userdel(const char *username)
+{
+    if(username == NULL) return -1;
+    return 0;
+}
+
+int command_groupadd(const char *groupname)
+{
+    if(groupname == NULL) return -1;
+    return 0;
+}
+
+int command_groupdel(const char *groupname)
+{
+    if(groupname == NULL) return -1;
+    return 0;
+}
+
+int command_gpasswd(const char *username, const char *groupname)
+{
+    if(username == NULL||groupname == NULL) return -1;
+    return 0;
+}
+
+int sc_filler(void *buf, const char *name, const struct stat *stbuf, off_t off, enum fuse_fill_dir_flags flags)
+{
+    if(strcmp(name, ".")&&strcmp(name, ".."))
+    {
+        strcat(buf, "/");
+        strcat(buf, name);
+    }
+    return 0;
 }
 
 void *sc_init(struct fuse_conn_info *conn, struct fuse_config *cfg)
@@ -322,6 +559,9 @@ int sc_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_
 
 int sc_write(const char *path, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
+    if(!strcmp(path, "/.run_command"))
+        return run_command(buf);
+
     (void) fi;
     int ret, res;
     size_t ret_size = size;
@@ -617,7 +857,6 @@ int sc_access(const char *path, int mask)
     cur_inode = read_inode(cur_inodeid);
     if(cur_inode == NULL)
         return -1;
-    
     
     if(cur_user_id == cur_inode->user)
         mask = mask << 6;
