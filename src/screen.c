@@ -11,6 +11,7 @@
 #define max_password_size 128
 #define max_path_size 256
 char path[max_path_size],username[max_username_size],password[max_password_size];
+char real_path[max_path_size];
 char buf[SC_BLOCK_SIZE];//read buffer
 char* vi(char* prech)//文本输入器
 {
@@ -244,17 +245,122 @@ int login()
   }while(1);
 }
 
+//check return value and print warning for get_real_path 
+int check_return_get_real_path(bool check_path){
+  if(!check_path){
+    return 0;
+  }else{  
+    if(sc_access(real_path,SC_F_OK)==0){
+      return 0;
+    }else{
+      printf("invalid path or path not exist!\n");
+      return -1;
+    }
+  }
+  return -1;
+}
+
+//transform string in buff into real path and save inti real_path
+//return -1:path not valid
+int get_real_path(bool check_path){
+  memset(real_path,0,sizeof(real_path));
+  if(buf[0]=='/'){
+    if(strlen(buf)>max_path_size){
+      printf("path argument is too long\n");
+      return -1;
+    }
+    memcpy(real_path,buf,max_path_size);
+    if(check_path)
+    return check_return_get_real_path(check_path);
+  }else if(buf[0]=='.'){
+    if(strcmp(buf,"..")==0){
+      memcpy(real_path,path,max_path_size);
+      int i=strlen(real_path);
+      real_path[real_path[i-1]]=0;
+      i--;
+      while(i&&real_path[i-1]!='/'){
+        real_path[i-1]=0;
+        i--;
+      }
+      return 0;
+    }else if(strlen(buf)>=2&&buf[1]=='/')
+    if(strlen(buf)+strlen(path)-2>max_path_size){
+      printf("path argument is too long\n");
+      return -1;
+    }
+    memcpy(real_path,path,strlen(path));
+    memcpy(real_path+strlen(path),buf+2,strlen(buf)-2);
+    return check_return_get_real_path(check_path);
+  }else{
+    if(strlen(buf)+strlen(path)>max_path_size){
+      printf("path argument is too long\n");
+      return -1;
+    }
+    memcpy(real_path,path,strlen(path));
+    memcpy(real_path+strlen(path),buf,strlen(buf));
+    return check_return_get_real_path(check_path);
+  }
+  printf("invalid path or path not exist!\n");
+  return -1;
+}
+
 int terminal()
 {
-  path[0]='~';
+  int ret;
+  path[0]='/';
   do
   {
-    printf("%s@cool_SCFS:%s$ ",username,path);
+    if(path[strlen(path)-1]!='/'){
+      path[strlen(path)]='/';
+    }
+    printf("%s@cool_SCFS:~%s$ ",username,path+1);
     scanf("%s",buf);
+    if(strlen(buf)>max_path_size){
+      printf("too long argument\n");
+      continue;
+    }
     if(strcmp(buf,"clear")==0||strcmp(buf,"reset")==0){
       system(buf);
     }else if(strcmp(buf,"shutdown")==0||strcmp(buf,"exit")==0){
       return 0;
+    }else if(strcmp(buf,"ls")==0){
+      
+    }else if(strcmp(buf,"cd")==0){
+      memset(buf,0,sizeof(buf));
+      scanf("%s",buf);
+      ret=get_real_path(true);
+      if(ret==0){//success!
+        memset(path,0,sizeof(path));
+        memcpy(path,real_path,max_path_size);
+      }else{//failed
+      }
+    }else if(strcmp(buf,"mkdir")==0){
+      memset(buf,0,sizeof(buf));
+      scanf("%s",buf);
+      ret=get_real_path(false);
+      if(ret!=0){
+        continue;//failed
+      }
+      ret=sc_mkdir(real_path,SC_DEFAULT_DIR);
+      if(ret==0){//success!
+      }else{
+        printf("mkdir failed\n");
+      }
+
+    }else if(strcmp(buf,"cat")==0){
+
+    }else if(strcmp(buf,"touch")==0){
+
+    }else if(strcmp(buf,"rm")==0){
+
+    }else if(strcmp(buf,"cp")==0){
+
+    }else if(strcmp(buf,"vi")==0){
+
+    }else if(strcmp(buf,"chmod")==0){
+
+    }else{
+      printf("%s: command not found\n",buf);
     }
   }while(1);
 }
