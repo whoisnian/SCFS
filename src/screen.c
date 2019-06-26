@@ -351,7 +351,7 @@ int terminal()
       scanf("%s",buf);
       ret=get_real_path(true);
       if(ret==0){//success!
-        /*ret=sc_access(SC_X_ALL);
+        /*ret=sc_access(real_path,SC_X_ALL);
         if(ret!=0){//failed;
           printf("permission denied\n");
           continue;
@@ -392,7 +392,7 @@ int terminal()
       }*/
       char* cat_buf=(char*)malloc(sizeof(char)*SC_BLOCK_SIZE);
       ret=sc_read(real_path,cat_buf,SC_BLOCK_SIZE,0,NULL);
-      if(ret!=0){//failed
+      if(ret<0){//failed
         printf("cat failed\n");
         continue;
       }
@@ -447,18 +447,18 @@ int terminal()
         printf("write or read permission denied\n");
         continue;
       }*/
-      char* vi_buf=(char*)malloc(sizeof(char)*SC_BLOCK_SIZE);
-      ret=sc_read(real_path,vi_buf,sizeof(buf),0,NULL);
-      if(ret!=0){//failed
+      char* vi_buf=(char*)malloc(SC_BLOCK_SIZE*sizeof(char));
+      ret=sc_read(real_path,vi_buf,SC_BLOCK_SIZE,0,NULL);
+      if(ret<0){//failed
         printf("read failed\n");
         continue;
       }
       vi_buf=vi(vi_buf);//have problem here
       system("reset");
-      //printf("(%s)(%s)(%d)\n",vi_buf,real_path,sizeof(vi_buf));//debug
-      ret=sc_write(real_path,vi_buf,sizeof(vi_buf),0,NULL);
+      printf("(%s)(%s)(%d)\n",vi_buf,real_path,strlen(vi_buf));//debug
+      ret=sc_write(real_path,vi_buf,strlen(vi_buf),0,NULL);
       free(vi_buf);
-      if(ret!=0){//failed
+      if(ret<0){//failed
         printf("write failed\n");
         continue;
       }
