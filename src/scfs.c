@@ -569,7 +569,10 @@ int sc_write(const char *path, const char *buf, size_t size, off_t offset, struc
     int ret;
     if(!strcmp(path, "/.run_command"))
     {
-        ret = run_command(buf);
+        char cmd[4096];
+        memset(cmd, 0, sizeof(cmd));
+        strncpy(cmd, buf, size);
+        ret = run_command(cmd);
         if(ret == 0)
             return size;
         else
