@@ -172,7 +172,7 @@ int close_scfs(void)
 
 int run_command(const char *cmd)
 {
-    debug_printf(debug_info, "run_command %s\n", cmd);
+    debug_printf(debug_info, "%u %u run_command %s\n", cur_user_id, cur_group_id, cmd);
     if(cmd == NULL||strlen(cmd) <= 1)
         return -1;
     char *oricmd, *subcmd;
@@ -273,7 +273,8 @@ int command_login(const char *username, const char *password)
                     sscanf(subbuf2, formatstr, &uid, &gid);
                     cur_user_id = uid;
                     cur_group_id = gid;
-                    return strlen(username)+strlen(password)+7;
+                    debug_printf(debug_info, "Login as %s\n", username);
+                    return 0;
                 }
                 subbuf2 = strtok(NULL, "\n");
             }
@@ -281,7 +282,7 @@ int command_login(const char *username, const char *password)
         }
         subbuf = strtok(NULL, "\n");
     }
-    return -1;
+    return -EACCES;
 }
 
 int command_passwd(const char *username, const char *password)
@@ -312,7 +313,7 @@ int command_passwd(const char *username, const char *password)
     }
 
     if(cur_user_id != uid&&cur_user_id != 0)
-        return -1;
+        return -EACCES;
     
     memset(buf, 0, sizeof(buf));
     int ret = sc_read("/.shadow", buf, 4096, 0, NULL);
@@ -322,13 +323,19 @@ int command_passwd(const char *username, const char *password)
     memset(userpass, 0, sizeof(userpass));
     strcpy(userpass, username);
     strcat(userpass, ":");
-    strcat(userpass, password);
+    
+    char buf2[4096], *buf3, *buf4;
+    memset(buf2, 0, sizeof(buf2));
+    buf3 = strstr(buf, userpass);
+    buf4 = strchr(buf3, '\n');
+    strncpy(buf2, buf, buf3-buf+strlen(userpass));
+    strcat(buf2, password);
+    strcat(buf2, "\n");
+    strcat(buf2, buf4+1);
 
-    // todo 修改buf
+    sc_write("/.shadow", buf2, 4096, 0, NULL);
 
-    sc_write("/.shadow", buf, 4096, 0, NULL);
-
-    return strlen(username)+strlen(password)+8;
+    return 0;
 }
 
 int command_useradd(const char *username)
@@ -559,11 +566,18 @@ int sc_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_
 
 int sc_write(const char *path, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
+    int ret;
     if(!strcmp(path, "/.run_command"))
-        return run_command(buf);
+    {
+        ret = run_command(buf);
+        if(ret == 0)
+            return size;
+        else
+            return ret;
+    }
 
     (void) fi;
-    int ret, res;
+    int res;
     size_t ret_size = size;
     inode_st *cur_inode = NULL;
     inodeid_t cur_inodeid;
