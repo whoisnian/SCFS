@@ -20,6 +20,20 @@ char* vi(char* prech)//文本输入器
   char ch[limitx+1][limity+1];
   char cl[limity+1];
   memset(ch,0,sizeof(ch));
+  if(prech!=NULL){
+    int i,ii,jj,len;
+    len=strlen(prech);
+    ii=0;jj=0;
+    for(i=0;i<len;i++){
+      ch[ii][jj]=prech[i];
+      if(prech[i]=='\n'){
+        ii++;
+        jj=0;
+      }else{
+        jj++;
+      }
+    }
+  }
   memset(cl,0,sizeof(cl));
   int mode=0;//0:view;1:insert
   initscr();
@@ -273,24 +287,28 @@ int get_real_path(bool check_path){
     if(check_path)
     return check_return_get_real_path(check_path);
   }else if(buf[0]=='.'){
-    if(strcmp(buf,"..")==0){
+    if(strlen(buf)>=2&&buf[1]=='.'){
       memcpy(real_path,path,max_path_size);
       int i=strlen(real_path);
-      real_path[real_path[i-1]]=0;
+      real_path[i-1]=0;
       i--;
       while(i&&real_path[i-1]!='/'){
         real_path[i-1]=0;
         i--;
       }
-      return 0;
-    }else if(strlen(buf)>=2&&buf[1]=='/')
-    if(strlen(buf)+strlen(path)-2>max_path_size){
-      printf("path argument is too long\n");
-      return -1;
-    }
-    memcpy(real_path,path,strlen(path));
-    memcpy(real_path+strlen(path),buf+2,strlen(buf)-2);
-    return check_return_get_real_path(check_path);
+      if(i)real_path[i-1]=0;
+      memcpy(real_path+strlen(real_path),buf+2,strlen(buf)-2);
+      if(strlen(real_path)==0)real_path[0]='/';
+      return check_return_get_real_path(check_path);
+    }else if(strlen(buf)>=2&&buf[1]=='/'){
+      if(strlen(buf)+strlen(path)-2>max_path_size){
+        printf("path argument is too long\n");
+        return -1;
+      }
+      memcpy(real_path,path,strlen(path));
+      memcpy(real_path+strlen(path),buf+2,strlen(buf)-2);
+      return check_return_get_real_path(check_path);
+    }else return -1;
   }else{
     if(strlen(buf)+strlen(path)>max_path_size){
       printf("path argument is too long\n");
@@ -323,41 +341,128 @@ int terminal()
       system(buf);
     }else if(strcmp(buf,"shutdown")==0||strcmp(buf,"exit")==0){
       return 0;
-    }else if(strcmp(buf,"ls")==0){
-      
-    }else if(strcmp(buf,"cd")==0){
+    }else if(strcmp(buf,"ls")==0){//have problem
+      memset(buf,0,sizeof(buf));
+      printf("(%s)\n",path);//debug
+      sc_readdir(path,buf,NULL,0,NULL,0);//have problem here
+      printf("[%s]\n",buf);//debug    
+    }else if(strcmp(buf,"cd")==0){//ok
       memset(buf,0,sizeof(buf));
       scanf("%s",buf);
       ret=get_real_path(true);
       if(ret==0){//success!
+        /*ret=sc_access(SC_X_ALL);
+        if(ret!=0){//failed;
+          printf("permission denied\n");
+          continue;
+        }*/
         memset(path,0,sizeof(path));
         memcpy(path,real_path,max_path_size);
       }else{//failed
       }
-    }else if(strcmp(buf,"mkdir")==0){
+    }else if(strcmp(buf,"mkdir")==0){//ok
       memset(buf,0,sizeof(buf));
       scanf("%s",buf);
       ret=get_real_path(false);
       if(ret!=0){
         continue;//failed
       }
+      /*ret=sc_access(real_path,SC_W_ALL);
+      if(ret!=0){
+        printf("write permission denied\n");
+        continue;
+      }*/
       ret=sc_mkdir(real_path,SC_DEFAULT_DIR);
       if(ret==0){//success!
       }else{
         printf("mkdir failed\n");
       }
 
-    }else if(strcmp(buf,"cat")==0){
+    }else if(strcmp(buf,"cat")==0){//todo
+      memset(buf,0,sizeof(buf));
+      scanf("%s",buf);
+      ret=get_real_path(true);
+      if(ret!=0){//failed
+        continue;
+      }
+      /*ret=sc_access(real_path,SC_R_ALL);
+      if(ret!=0){
+        printf("read permission denied\n");
+        continue;
+      }*/
+      char* cat_buf=(char*)malloc(sizeof(char)*SC_BLOCK_SIZE);
+      ret=sc_read(real_path,cat_buf,SC_BLOCK_SIZE,0,NULL);
+      if(ret!=0){//failed
+        printf("cat failed\n");
+        continue;
+      }
+      printf("%s\n",cat_buf);
+      free(cat_buf);
+    }else if(strcmp(buf,"touch")==0){//ok
+      memset(buf,0,sizeof(buf));
+      scanf("%s",buf);
+      ret=get_real_path(false);
+      //printf("(%s)",real_path);//debug
+      if(ret!=0){
+        continue;//failed
+      }
+      /*ret=sc_access(real_path,SC_W_ALL);
+      if(ret!=0){
+        printf("write permission denied\n");
+        continue;
+      }*/
+      ret=sc_create(real_path,SC_DEFAULT_DIR,NULL);
+      if(ret==0){//success!
+      }else{
+        printf("touch failed\n");
+      }
+    }else if(strcmp(buf,"rm")==0){//ok, but may need further check
+      memset(buf,0,sizeof(buf));
+      scanf("%s",buf);
+      ret=get_real_path(true);
+      if(ret!=0){
+        continue;//failed
+      }
+      /*ret=sc_access(real_path,SC_W_ALL);
+      if(ret!=0){
+        printf("write permission denied\n");
+        continue;
+      }*/
+      ret=sc_rmdir(real_path);
+      if(ret==0){//success
+      }else{
+        printf("rm failed\n");
+      }
+    }else if(strcmp(buf,"cp")==0){//todo
 
-    }else if(strcmp(buf,"touch")==0){
-
-    }else if(strcmp(buf,"rm")==0){
-
-    }else if(strcmp(buf,"cp")==0){
-
-    }else if(strcmp(buf,"vi")==0){
-
-    }else if(strcmp(buf,"chmod")==0){
+    }else if(strcmp(buf,"vi")==0){//have problem
+      memset(buf,0,sizeof(buf));
+      scanf("%s",buf);
+      ret=get_real_path(true);
+      if(ret!=0){
+        continue;//failed
+      }
+      /*ret=sc_access(real_path,SC_R_ALL|SC_W_ALL);
+      if(ret!=0){
+        printf("write or read permission denied\n");
+        continue;
+      }*/
+      char* vi_buf=(char*)malloc(sizeof(char)*SC_BLOCK_SIZE);
+      ret=sc_read(real_path,vi_buf,sizeof(buf),0,NULL);
+      if(ret!=0){//failed
+        printf("read failed\n");
+        continue;
+      }
+      vi_buf=vi(vi_buf);//have problem here
+      system("reset");
+      //printf("(%s)(%s)(%d)\n",vi_buf,real_path,sizeof(vi_buf));//debug
+      ret=sc_write(real_path,vi_buf,sizeof(vi_buf),0,NULL);
+      free(vi_buf);
+      if(ret!=0){//failed
+        printf("write failed\n");
+        continue;
+      }
+    }else if(strcmp(buf,"chmod")==0){//todo
 
     }else{
       printf("%s: command not found\n",buf);
