@@ -7,10 +7,11 @@
 #include <string.h>
 #include "definition.h"
 #include "scfs.h"
-typedef struct screen_user{
-  char username[64],password[64];
-}screen_user;
-
+#define max_username_size 128
+#define max_password_size 128
+#define max_path_size 256
+char path[max_path_size],username[max_username_size],password[max_password_size];
+char buf[SC_BLOCK_SIZE];//read buffer
 char* vi(char* prech)//文本输入器
 {
   int key=0,x=0,y=0;
@@ -197,46 +198,65 @@ char* vi(char* prech)//文本输入器
 }
 
 int init(){
-  char buf[SC_BLOCK_SIZE];
-  char path[128];
   int ret;
-  struct screen_user user;
   memset(buf,0,sizeof(buf));
   memset(path,0,sizeof(path));
-  strcpy(path,"userinfo");
-  ret=sc_create(path,SC_DEFAULT_FILE,NULL);
-  
-  if(ret!=0)
-  {
-    printf("creat file failed in function init,line__LINE__\n");
-    return -1;
-  }
-  
+  memset(username,0,sizeof(username));
+  memset(password,0,sizeof(password));
+  system("reset");
 }
 
 int login()
 {
-  char buf[SC_BLOCK_SIZE];
-  char path[128];
-  memset(buf,0,sizeof(buf));
-  memset(path,0,sizeof(path));
-  strcpy(path,"userinfo");
-  sc_read(path,buf,SC_BLOCK_SIZE,0,NULL);
-  if(strlen(buf)==0){
-    init();
-    sc_read(path,buf,SC_BLOCK_SIZE,0,NULL);
-  }
 
+  int max_fail_time=3;//max time of failed login attempt
+  int fail_time=0;
   do
   {
-    printf("username : ");
+    memset(buf,0,sizeof(buf));
+    printf("username : ");scanf("%s",buf);
+    if(strlen(buf)>max_username_size){//avoid over memory error
+      printf("username overlength\n");
+      return -1;
+    }else{
+      memcpy(username,buf,max_username_size);
+    }
+    printf("password : ");scanf("%s",buf);
+    if(strlen(buf)>max_username_size){
+      printf("password overlength\n");
+      return -1;
+    }else{
+      memcpy(password,buf,max_password_size);
+    }
+    if(1){//modify later to use relevant interface
+      system("reset");
+      break;
+    }else
+    {
+      fail_time++;
+      if(fail_time>=max_fail_time){
+        printf("too much failed login attempts\n");
+        return -1;
+      }
+      system("reset");
+      printf("permission failed, please try again\n");
+    }
   }while(1);
-
 }
 
 int terminal()
 {
-
+  path[0]='~';
+  do
+  {
+    printf("%s@cool_SCFS:%s$ ",username,path);
+    scanf("%s",buf);
+    if(strcmp(buf,"clear")==0||strcmp(buf,"reset")==0){
+      system(buf);
+    }else if(strcmp(buf,"shutdown")==0||strcmp(buf,"exit")==0){
+      return 0;
+    }
+  }while(1);
 }
 
 int main()
@@ -253,7 +273,11 @@ int main()
     printf("open scfs failed in function main,line__LINE__\n");
     return 0;
   }
-  login();
+  init();
+  //if(login()!=0){
+  //  printf("login failed, system exit");
+  //  return 0;
+  //}
   terminal();
   ret=close_scfs();
   if(ret!=0){
