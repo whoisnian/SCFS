@@ -386,11 +386,11 @@ int command_passwd(const char *username, const char *password)
     buf3 = strstr(buf, userpass);
     if(buf3 != NULL)
     {
-    buf4 = strchr(buf3, '\n');
-    strncpy(buf2, buf, buf3-buf+strlen(userpass));
-    strcat(buf2, password);
-    strcat(buf2, "\n");
-    strcat(buf2, buf4+1);
+        buf4 = strchr(buf3, '\n');
+        strncpy(buf2, buf, buf3-buf+strlen(userpass));
+        strcat(buf2, password);
+        strcat(buf2, "\n");
+        strcat(buf2, buf4+1);
     }
     else
     {
