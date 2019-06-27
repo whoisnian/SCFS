@@ -102,7 +102,8 @@ char* vi(char* prech)//文本输入器
         y--;
         if(y<0){
           x--;
-          y=strlen(ch[x]);
+          y=strlen(ch[x])-1;
+          ch[x][y]=0;
           memcpy(ch[x]+strlen(ch[x]),ch[x+1],min(strlen(ch[x+1]),limitx-strlen(ch[x])));
           for(int i=x+1;i<limitx;i++)
           {
