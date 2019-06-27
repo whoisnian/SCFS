@@ -18,6 +18,7 @@
 #include "inode.h"
 #include "bitmap.h"
 #include "scfs.h"
+#include "script.h"
 #include "debugprintf.h"
 
 unsigned int cur_user_id = SC_GUEST_USER_ID;
@@ -151,7 +152,41 @@ int init_scfs(const char *filepath)
     {
         sc_mkdir("/bin", SC_DEFAULT_DIR);
         sc_chown("/bin", 0, 0, NULL);
-        // todo 写入脚本
+
+        // 登录脚本
+        sc_create("/bin/login", SC_REG|SC_R_ALL|SC_X_ALL, NULL);
+        sc_chown("/bin/login", 0, 0, NULL);
+        sc_write("/bin/login", sc_script_login, strlen(sc_script_login), 0, NULL);
+
+        // 新建用户脚本
+        sc_create("/bin/useradd", SC_REG|SC_R_ALL|SC_X_ALL, NULL);
+        sc_chown("/bin/useradd", 0, 0, NULL);
+        sc_write("/bin/useradd", sc_script_login, strlen(sc_script_useradd), 0, NULL);
+
+        // 删除用户脚本
+        sc_create("/bin/userdel", SC_REG|SC_R_ALL|SC_X_ALL, NULL);
+        sc_chown("/bin/userdel", 0, 0, NULL);
+        sc_write("/bin/userdel", sc_script_login, strlen(sc_script_userdel), 0, NULL);
+
+        // 修改密码脚本
+        sc_create("/bin/passwd", SC_REG|SC_R_ALL|SC_X_ALL, NULL);
+        sc_chown("/bin/passwd", 0, 0, NULL);
+        sc_write("/bin/passwd", sc_script_login, strlen(sc_script_passwd), 0, NULL);
+
+        // 新建用户组脚本
+        sc_create("/bin/groupadd", SC_REG|SC_R_ALL|SC_X_ALL, NULL);
+        sc_chown("/bin/groupadd", 0, 0, NULL);
+        sc_write("/bin/groupadd", sc_script_login, strlen(sc_script_groupadd), 0, NULL);
+
+        // 删除用户组脚本
+        sc_create("/bin/groupdel", SC_REG|SC_R_ALL|SC_X_ALL, NULL);
+        sc_chown("/bin/groupdel", 0, 0, NULL);
+        sc_write("/bin/groupdel", sc_script_login, strlen(sc_script_groupdel), 0, NULL);
+
+        // 修改用户所属用户组
+        sc_create("/bin/gpasswd", SC_REG|SC_R_ALL|SC_X_ALL, NULL);
+        sc_chown("/bin/gpasswd", 0, 0, NULL);
+        sc_write("/bin/gpasswd", sc_script_login, strlen(sc_script_gpasswd), 0, NULL);
     }
     temp_root = 0;
 

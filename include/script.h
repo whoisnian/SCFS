@@ -9,11 +9,18 @@ else\n\
     zenity --notification --text=\"Need package 'zenity'.\"\n\
     exit 1\n\
 fi\n\
-echo -n \"login $namepass\" > $(cd \"$(dirname \"$0\")\";pwd)/../.run_command\n\
+echo -n \"login $namepass\" 1> $(cd \"$(dirname \"$0\")\";pwd)/../.run_command 2>/dev/null\n\
 if [ $? -eq 0 ]; then\n\
     zenity --info --text=\"Login successful.\"\n\
 else\n\
     zenity --error --text=\"Login failed.\"\n\
 fi";
+
+char sc_script_useradd[] = "";
+char sc_script_userdel[] = "";
+char sc_script_passwd[] = "";
+char sc_script_groupadd[] = "";
+char sc_script_groupdel[] = "";
+char sc_script_gpasswd[] = "";
 
 #endif // SCRIPT_H
