@@ -161,32 +161,32 @@ int init_scfs(const char *filepath)
         // 新建用户脚本
         sc_create("/bin/useradd", SC_REG|SC_R_ALL|SC_X_ALL, NULL);
         sc_chown("/bin/useradd", 0, 0, NULL);
-        sc_write("/bin/useradd", sc_script_login, strlen(sc_script_useradd), 0, NULL);
+        sc_write("/bin/useradd", sc_script_useradd, strlen(sc_script_useradd), 0, NULL);
 
         // 删除用户脚本
         sc_create("/bin/userdel", SC_REG|SC_R_ALL|SC_X_ALL, NULL);
         sc_chown("/bin/userdel", 0, 0, NULL);
-        sc_write("/bin/userdel", sc_script_login, strlen(sc_script_userdel), 0, NULL);
+        sc_write("/bin/userdel", sc_script_userdel, strlen(sc_script_userdel), 0, NULL);
 
         // 修改密码脚本
         sc_create("/bin/passwd", SC_REG|SC_R_ALL|SC_X_ALL, NULL);
         sc_chown("/bin/passwd", 0, 0, NULL);
-        sc_write("/bin/passwd", sc_script_login, strlen(sc_script_passwd), 0, NULL);
+        sc_write("/bin/passwd", sc_script_passwd, strlen(sc_script_passwd), 0, NULL);
 
         // 新建用户组脚本
         sc_create("/bin/groupadd", SC_REG|SC_R_ALL|SC_X_ALL, NULL);
         sc_chown("/bin/groupadd", 0, 0, NULL);
-        sc_write("/bin/groupadd", sc_script_login, strlen(sc_script_groupadd), 0, NULL);
+        sc_write("/bin/groupadd", sc_script_groupadd, strlen(sc_script_groupadd), 0, NULL);
 
         // 删除用户组脚本
         sc_create("/bin/groupdel", SC_REG|SC_R_ALL|SC_X_ALL, NULL);
         sc_chown("/bin/groupdel", 0, 0, NULL);
-        sc_write("/bin/groupdel", sc_script_login, strlen(sc_script_groupdel), 0, NULL);
+        sc_write("/bin/groupdel", sc_script_groupdel, strlen(sc_script_groupdel), 0, NULL);
 
         // 修改用户所属用户组
         sc_create("/bin/gpasswd", SC_REG|SC_R_ALL|SC_X_ALL, NULL);
         sc_chown("/bin/gpasswd", 0, 0, NULL);
-        sc_write("/bin/gpasswd", sc_script_login, strlen(sc_script_gpasswd), 0, NULL);
+        sc_write("/bin/gpasswd", sc_script_gpasswd, strlen(sc_script_gpasswd), 0, NULL);
     }
     temp_root = 0;
 
