@@ -10,6 +10,7 @@
 #include "superblock.h"
 #include "inode.h"
 #include "block.h"
+#include "screen.h"
 #define max_username_size 128
 #define max_password_size 128
 #define max_path_size 256
@@ -421,7 +422,12 @@ int terminal()
       return 0;
     }else if(strcmp(buf,"ls")==0){//ok
       char* ls_buf=malloc(sizeof(char)*SC_BLOCK_SIZE);
-      sc_readdir(path,ls_buf,sc_filler,0,NULL,0);
+      memset(ls_buf,0,sizeof(char)*SC_BLOCK_SIZE);
+      ret=sc_readdir(path,ls_buf,sc_filler,0,NULL,0);
+      if(ret!=0){
+        printf("ls failed\n");
+        continue;
+      }
       int len=strlen(ls_buf),cnt=0,num=0;
       for(int i=1;i<len;i++){
         if(ls_buf[i]=='/'){
@@ -490,6 +496,7 @@ int terminal()
         continue;
       }
       char* cat_buf=(char*)malloc(sizeof(char)*SC_BLOCK_SIZE);
+      memset(cat_buf,0,sizeof(char)*SC_BLOCK_SIZE);
       ret=sc_read(real_path,cat_buf,SC_BLOCK_SIZE,0,NULL);
       if(ret<0){//failed
         printf("cat failed\n");
@@ -538,6 +545,9 @@ int terminal()
       char* cp_buf=malloc(sizeof(char)*SC_BLOCK_SIZE);
       char* path_src=malloc(sizeof(char)*max_path_size);
       char* path_dest=malloc(sizeof(char)*max_path_size);
+      memset(cp_buf,0,sizeof(char)*SC_BLOCK_SIZE);
+      memset(path_src,0,sizeof(char)*max_path_size);
+      memset(path_dest,0,sizeof(char)*max_path_size);
       int now;
       memset(buf,0,sizeof(buf));
       scanf("%s",buf);
@@ -582,12 +592,18 @@ int terminal()
       if(ret!=0){
         continue;//failed
       }
-      /*ret=sc_access(real_path,SC_R_ALL|SC_W_ALL);
+      ret=sc_access(real_path,SC_R_OK);
       if(ret!=0){
-        printf("write or read permission denied\n");
+        printf("read permission denied\n");
         continue;
-      }*/
+      }
+      ret=sc_access(real_path,SC_W_OK);
+      if(ret!=0){
+        printf("write permission denied\n");
+        continue;
+      }
       char* vi_buf=(char*)malloc(SC_BLOCK_SIZE*sizeof(char));
+      memset(vi_buf,0,SC_BLOCK_SIZE*sizeof(char));
       ret=sc_read(real_path,vi_buf,SC_BLOCK_SIZE,0,NULL);
       if(ret<0){//failed
         printf("read failed\n");
@@ -611,12 +627,12 @@ int terminal()
       if(ret!=0){//failed
         continue;
       }
-      ret=sc_access(path,SC_W_OK);
+      ret=sc_access(real_path,SC_W_OK);
       if(ret!=0){//failed
         printf("write permission denied\n");
         continue;
       }
-      ret=sc_chmod(path,new_mode,NULL);
+      ret=sc_chmod(real_path,new_mode,NULL);
       if(ret!=0){//failed
         printf("chmod failed\n");
         continue;
