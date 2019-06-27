@@ -138,6 +138,15 @@ int init_scfs(const char *filepath)
     {
         sc_create("/.run_command", SC_REG|SC_USR_W|SC_GRP_W|SC_OTH_W, NULL);
     }
+    if(sc_access("/tmp", SC_F_OK) != 0)
+    {
+        sc_create("/tmp", SC_DIR|SC_USR_ALL|SC_GRP_ALL|SC_OTH_ALL, NULL);
+    }
+    if(sc_access("/bin", SC_F_OK) != 0)
+    {
+        sc_create("/bin", SC_DEFAULT_DIR, NULL);
+        // todo 写入脚本
+    }
     temp_root = 0;
 
     return 0;
@@ -606,6 +615,7 @@ void *sc_init(struct fuse_conn_info *conn, struct fuse_config *cfg)
 
 int sc_getattr(const char *path, struct stat *buf, struct fuse_file_info *fi)
 {
+    debug_printf(debug_info, "Call sc_getattr(path %s, buf, fi)\n", path);
     (void) fi;
     int ret;
     inode_st *inode = NULL;
@@ -641,6 +651,7 @@ int sc_getattr(const char *path, struct stat *buf, struct fuse_file_info *fi)
 
 int sc_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi, enum fuse_readdir_flags flags)
 {
+    debug_printf(debug_info, "Call sc_readdir(path %s, buf, filler, offset, fi, flags)\n", path);
     (void) offset;
 	(void) fi;
 	(void) flags;
@@ -655,6 +666,17 @@ int sc_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset
     cur_inode = read_inode(cur_inodeid);
     if(cur_inode == NULL)
         return -ENOENT;
+    
+    if(cur_user_id != 0&&temp_root != 1)
+    {
+        unsigned int mask = SC_R_OK;
+        if(cur_user_id == cur_inode->user)
+            mask = mask << 6;
+        else if(cur_group_id == cur_inode->group)
+            mask = mask << 3;
+        if((cur_inode->mode&mask)!=mask)
+            return -EACCES;
+    }
 
     filler(buf, ".", NULL, 0, 0);
     filler(buf, "..", NULL, 0, 0);
@@ -685,6 +707,7 @@ int sc_readdir(const char *path, void *buf, fuse_fill_dir_t filler, off_t offset
 
 int sc_open(const char *path, struct fuse_file_info *fi)
 {
+    debug_printf(debug_info, "Call sc_open(path %s, fi)\n", path);
     (void) fi;
     int ret;
     inode_st *cur_inode = NULL;
@@ -719,6 +742,17 @@ int sc_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_
     cur_inode = read_inode(cur_inodeid);
     if(cur_inode == NULL)
         return -ENOENT;
+
+    if(cur_user_id != 0&&temp_root != 1)
+    {
+        unsigned int mask = SC_R_OK;
+        if(cur_user_id == cur_inode->user)
+            mask = mask << 6;
+        else if(cur_group_id == cur_inode->group)
+            mask = mask << 3;
+        if((cur_inode->mode&mask)!=mask)
+            return -EACCES;
+    }
 
     long len = cur_inode->size;
 	if(offset < len)
@@ -813,6 +847,17 @@ int sc_write(const char *path, const char *buf, size_t size, off_t offset, struc
     if(cur_inode == NULL)
         return -ENOENT;
 
+    if(cur_user_id != 0&&temp_root != 1)
+    {
+        unsigned int mask = SC_W_OK;
+        if(cur_user_id == cur_inode->user)
+            mask = mask << 6;
+        else if(cur_group_id == cur_inode->group)
+            mask = mask << 3;
+        if((cur_inode->mode&mask)!=mask)
+            return -EACCES;
+    }
+
     // 分配足够的block
     long len = cur_inode->size;
     for(int i = ((offset+size+SC_BLOCK_SIZE-1)/SC_BLOCK_SIZE)-((len+SC_BLOCK_SIZE-1)/SC_BLOCK_SIZE);i > 0;i--)
@@ -883,12 +928,19 @@ int sc_write(const char *path, const char *buf, size_t size, off_t offset, struc
 
 int sc_mkdir(const char *path, mode_t mode)
 {
+    debug_printf(debug_info, "Call sc_mkdir(path %s, mode %o)\n", path, mode);
     int ret;
     inodeid_t inodeid;
 
     ret = find_inode(path, &inodeid);
     if(ret == 0)
         return -EEXIST;
+
+    char check_parent_path[SC_PATH_MAX];
+    memset(check_parent_path, 0, sizeof(check_parent_path));
+    get_parent_path(path, check_parent_path);
+    if(sc_access(check_parent_path, SC_W_OK) != 0)
+        return -EACCES;
 
     ret = make_inode(path, &inodeid);
     if(ret != 0)
@@ -897,13 +949,27 @@ int sc_mkdir(const char *path, mode_t mode)
     ret = change_inode_mode(inodeid, mode|SC_DIR);
     if(ret != 0)
         return ret;
+
+    temp_root = 1;
+    ret = sc_chown(path, cur_user_id, cur_group_id, NULL);
+    temp_root = 0;
+    if(ret != 0)
+        return ret;
     return 0;
 }
 
 int sc_create(const char *path, mode_t mode, struct fuse_file_info *fi)
 {
+    debug_printf(debug_info, "Call sc_create(path %s, mode %o, fi)\n", path, mode);
     (void) fi;
     int ret;
+
+    char check_parent_path[SC_PATH_MAX];
+    memset(check_parent_path, 0, sizeof(check_parent_path));
+    get_parent_path(path, check_parent_path);
+    if(sc_access(check_parent_path, SC_W_OK) != 0)
+        return -EACCES;
+
     inodeid_t inodeid;
     ret = make_inode(path, &inodeid);
     if(ret != 0)
@@ -912,11 +978,18 @@ int sc_create(const char *path, mode_t mode, struct fuse_file_info *fi)
     ret = change_inode_mode(inodeid, mode|SC_REG);
     if(ret != 0)
         return ret;
+    
+    temp_root = 1;
+    ret = sc_chown(path, cur_user_id, cur_group_id, NULL);
+    temp_root = 0;
+    if(ret != 0)
+        return ret;
     return 0;
 }
 
 int sc_chmod(const char *path, mode_t mode, struct fuse_file_info *fi)
 {
+    debug_printf(debug_info, "Call sc_chmod(path %s, mode %o, fi)\n", path, mode);
     (void) fi;
     inodeid_t cur_inodeid;
     int ret;
@@ -924,6 +997,22 @@ int sc_chmod(const char *path, mode_t mode, struct fuse_file_info *fi)
     ret = find_inode(path, &cur_inodeid);
     if(ret != 0)
         return -ENOENT;
+    
+    inode_st *cur_inode = read_inode(cur_inodeid);
+    if(cur_inode == NULL)
+        return -ENOENT;
+
+    if(cur_user_id != 0&&temp_root != 1)
+    {
+        unsigned int mask = SC_W_OK;
+        if(cur_user_id == cur_inode->user)
+            mask = mask << 6;
+        else if(cur_group_id == cur_inode->group)
+            mask = mask << 3;
+        if((cur_inode->mode&mask)!=mask)
+            return -EACCES;
+    }
+    free(cur_inode);
 
     ret = change_inode_mode(cur_inodeid, mode);
     if(ret != 0)
@@ -933,6 +1022,7 @@ int sc_chmod(const char *path, mode_t mode, struct fuse_file_info *fi)
 
 int sc_rename(const char *from, const char *to, unsigned int flags)
 {
+    debug_printf(debug_info, "Call sc_rename(from %s, to %s, flags)\n", from, to);
     (void) flags;
     inode_st *cur_inode;
     inodeid_t cur_inodeid, to_parent_inodeid;
@@ -949,6 +1039,14 @@ int sc_rename(const char *from, const char *to, unsigned int flags)
     ret = find_inode(to_parent_path, &to_parent_inodeid);
     if(ret != 0)
         return -ENOENT;
+
+    char check_parent_path[SC_PATH_MAX];
+    memset(check_parent_path, 0, sizeof(check_parent_path));
+    get_parent_path(from, check_parent_path);
+    if(sc_access(check_parent_path, SC_W_OK) != 0)
+        return -EACCES;
+    if(sc_access(to_parent_path, SC_W_OK) != 0)
+        return -EACCES;
     
     ret = find_inode(from, &cur_inodeid);
     if(ret != 0)
@@ -1000,6 +1098,7 @@ int sc_rename(const char *from, const char *to, unsigned int flags)
 
 int sc_statfs(const char *path, struct statvfs *stbuf)
 {
+    debug_printf(debug_info, "Call sc_statfs(path %s, mstbuf)\n", path);
     (void) path;
 
     superblock_st *superblock = read_superblock();
@@ -1018,7 +1117,7 @@ int sc_statfs(const char *path, struct statvfs *stbuf)
 
 int sc_unlink(const char *path)
 {
-    debug_printf(debug_info, "unlink %s\n", path);
+    debug_printf(debug_info, "Call sc_unlink(path %s)\n", path);
     inodeid_t cur_inodeid;
     inode_st *cur_inode;
     int ret;
@@ -1026,6 +1125,12 @@ int sc_unlink(const char *path)
     ret = find_inode(path, &cur_inodeid);
     if(ret != 0)
         return -ENOENT;
+
+    char check_parent_path[SC_PATH_MAX];
+    memset(check_parent_path, 0, sizeof(check_parent_path));
+    get_parent_path(path, check_parent_path);
+    if(sc_access(check_parent_path, SC_W_OK) != 0)
+        return -EACCES;
 
     cur_inode = read_inode(cur_inodeid);
     if(cur_inode == NULL)
@@ -1049,7 +1154,7 @@ int sc_unlink(const char *path)
 
 int sc_rmdir(const char *path)
 {
-    debug_printf(debug_info, "rmdir %s\n", path);
+    debug_printf(debug_info, "Call sc_rmdir(path %s)\n", path);
     inodeid_t cur_inodeid;
     inode_st *cur_inode;
     int ret;
@@ -1057,6 +1162,12 @@ int sc_rmdir(const char *path)
     ret = find_inode(path, &cur_inodeid);
     if(ret != 0)
         return -ENOENT;
+
+    char check_parent_path[SC_PATH_MAX];
+    memset(check_parent_path, 0, sizeof(check_parent_path));
+    get_parent_path(path, check_parent_path);
+    if(sc_access(check_parent_path, SC_W_OK) != 0)
+        return -EACCES;
 
     cur_inode = read_inode(cur_inodeid);
     if(cur_inode == NULL)
@@ -1080,7 +1191,7 @@ int sc_rmdir(const char *path)
 
 int sc_access(const char *path, int mask)
 {
-    debug_printf(debug_info, "Call access(path: %s, mask: %d)\n", path, mask);
+    debug_printf(debug_info, "Call sc_access(path %s, mask %d)\n", path, mask);
     inodeid_t cur_inodeid;
     inode_st *cur_inode;
     int ret;
@@ -1101,7 +1212,43 @@ int sc_access(const char *path, int mask)
     ret = -1;
     if((cur_inode->mode&mask)==mask)
         ret = 0;
-    if(ret == -1&&cur_user_id == 0&&mask != 0)
+    if(ret == -1&&(cur_user_id == 0||temp_root == 1)&&mask != 0)
         ret = 0;
     return ret;
+}
+
+int sc_chown(const char *path, uid_t uid, gid_t gid, struct fuse_file_info *fi)
+{
+    debug_printf(debug_info, "Call sc_chown(path %s, uid %u, gid %u, fi)\n", path, uid, gid);
+    (void) fi;
+    inodeid_t cur_inodeid;
+    int ret;
+
+    ret = find_inode(path, &cur_inodeid);
+    if(ret != 0)
+        return -ENOENT;
+    
+    inode_st *cur_inode = read_inode(cur_inodeid);
+    if(cur_inode == NULL)
+        return -ENOENT;
+
+    if(cur_user_id != 0&&temp_root != 1)
+    {
+        unsigned int mask = SC_W_OK;
+        if(cur_user_id == cur_inode->user)
+            mask = mask << 6;
+        else if(cur_group_id == cur_inode->group)
+            mask = mask << 3;
+        if((cur_inode->mode&mask)!=mask)
+            return -EACCES;
+    }
+
+    cur_inode->user = uid;
+    cur_inode->group = gid;
+
+    write_inode(cur_inodeid, cur_inode);
+
+    if(cur_inode != NULL)
+        free(cur_inode);
+    return 0;
 }

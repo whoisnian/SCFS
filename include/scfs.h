@@ -39,6 +39,7 @@ int sc_statfs(const char *path, struct statvfs *stbuf);
 int sc_unlink(const char *path);
 int sc_rmdir(const char *path);
 int sc_access(const char *path, int mask);
+int sc_chown(const char *path, uid_t uid, gid_t gid, struct fuse_file_info *fi);
 
 /*
 //int (*getattr) (const char *, struct stat *, struct fuse_file_info *fi);
@@ -51,7 +52,7 @@ int (*symlink) (const char *, const char *);
 //int (*rename) (const char *, const char *, unsigned int flags);
 int (*link) (const char *, const char *);
 //int (*chmod) (const char *, mode_t, struct fuse_file_info *fi);
-int (*chown) (const char *, uid_t, gid_t, struct fuse_file_info *fi);
+//int (*chown) (const char *, uid_t, gid_t, struct fuse_file_info *fi);
 int (*truncate) (const char *, off_t, struct fuse_file_info *fi);
 //int (*open) (const char *, struct fuse_file_info *);
 //int (*read) (const char *, char *, size_t, off_t, struct fuse_file_info *);
