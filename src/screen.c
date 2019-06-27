@@ -7,6 +7,9 @@
 #include <string.h>
 #include "definition.h"
 #include "scfs.h"
+#include "superblock.h"
+#include "inode.h"
+#include "block.h"
 #define max_username_size 128
 #define max_password_size 128
 #define max_path_size 256
@@ -215,6 +218,78 @@ char* vi(char* prech)//文本输入器
   exit(EXIT_SUCCESS);
 }
 
+void scfsviewer()//查看各种信息
+{
+  char command[100];
+  int id, ok = 1;
+  char data[SC_BLOCK_SIZE];
+  dir_st dir[15];
+
+  while(ok)
+  {
+      printf("\n\033[1;32;40m--->>\033[0m ");
+      scanf("%s", command);
+      if(!strcmp(command, "q"))
+      {
+          // q: 退出 quit
+          ok = 0;
+      }
+      else if(!strcmp(command, "s"))
+      {
+          // s: 查看超级块 superblock
+          printf("超级块信息：\n");
+          superblock_st *superblock = read_superblock();
+          debug_superblock(superblock);
+          free(superblock);
+      }
+      else if(!strcmp(command, "i"))
+      {
+          // i: 查看索引节点 inode
+          scanf("%d", &id);
+          printf("索引节点信息：\n");
+          inode_st *inode = read_inode(id);
+          debug_inode(inode);
+          free(inode);
+      }
+      else if(!strcmp(command, "b"))
+      {
+          // b: 查看数据块 block
+          scanf("%d", &id);
+          printf("数据块信息：\n");
+          read_block(id, data, SC_BLOCK_SIZE);
+          for(int i = 0;i < SC_BLOCK_SIZE/16;i++)
+          {
+              printf("%04x: ", i*16);
+              for(int j = 0;j < 8;j++)
+                  printf("%02x%02x ", data[i*16+j*2]&255, data[i*16+j*2+1]&255);
+              printf("  ");
+              for(int j = 0;j < 8;j++)
+                  printf("%c%c ", data[i*16+j*2]>=32?data[i*16+j*2]:46, data[i*16+j*2+1]>=32?data[i*16+j*2+1]:46);
+              printf("\n");
+          }
+      }
+      else if(!strcmp(command, "d"))
+      {
+          // d: 查看目录所在数据块 dir
+          scanf("%d", &id);
+          printf("目录块信息：\n");
+          read_block(id, dir, sizeof(dir_st)*15);
+          for(int i = 0;i < 15;i++)
+              printf("%2u %s\n", dir[i].inodeid, dir[i].filename);
+      }
+      else if((!strcmp(command, "h"))||(!strcmp(command, "?")))
+      {
+          // h/?: 帮助 help
+          printf(" s        查看超级块信息\n");
+          printf(" i <id>   查看索引节点信息\n");
+          printf(" b <id>   查看数据块信息\n");
+          printf(" d <id>   查看目录块信息\n");
+          printf(" q        退出\n");
+          printf(" h/?      查看帮助信息\n");
+      }
+    }
+}
+
 int init(){
   int ret;
   memset(buf,0,sizeof(buf));
@@ -246,7 +321,7 @@ int login()
     }else{
       memcpy(password,buf,max_password_size);
     }
-    if(1){//modify later to use relevant interface
+    if(command_login(username,password)==0){//modify later to use relevant interface
       system("reset");
       break;
     }else
@@ -334,7 +409,7 @@ int terminal()
     if(path[strlen(path)-1]!='/'){
       path[strlen(path)]='/';
     }
-    printf("%s@cool_SCFS:~%s$ ",username,path+1);
+    printf("\033[1;32;40m%s@cool_SCFS\033[0m:\033[1;34;40m~%s\033[0m$ ",username,path+1);
     scanf("%s",buf);
     if(strlen(buf)>max_path_size){
       printf("too long argument\n");
@@ -344,21 +419,42 @@ int terminal()
       system(buf);
     }else if(strcmp(buf,"shutdown")==0||strcmp(buf,"exit")==0){
       return 0;
-    }else if(strcmp(buf,"ls")==0){//have problem
-      memset(buf,0,sizeof(buf));
-      printf("(%s)\n",path);//debug
-      sc_readdir(path,buf,NULL,0,NULL,0);//have problem here
-      printf("[%s]\n",buf);//debug    
+    }else if(strcmp(buf,"ls")==0){//ok
+      char* ls_buf=malloc(sizeof(char)*SC_BLOCK_SIZE);
+      sc_readdir(path,ls_buf,sc_filler,0,NULL,0);
+      int len=strlen(ls_buf),cnt=0,num=0;
+      for(int i=1;i<len;i++){
+        if(ls_buf[i]=='/'){
+          for(int j=cnt;j<12;j++)
+            printf(" ");
+          num++;
+          if(num%4==0)printf("\n");
+          cnt=0;
+        }else{
+          if(cnt<8){
+            printf("%c",ls_buf[i]);
+            cnt++;
+          }else{
+            if(cnt==8){
+              printf("..");
+              cnt=10;
+            }
+          }
+        }
+        
+      }
+      printf("\n"); 
+      free(ls_buf);
     }else if(strcmp(buf,"cd")==0){//ok
       memset(buf,0,sizeof(buf));
       scanf("%s",buf);
       ret=get_real_path(true);
       if(ret==0){//success!
-        /*ret=sc_access(real_path,SC_X_ALL);
+        ret=sc_access(real_path,SC_X_OK);
         if(ret!=0){//failed;
           printf("permission denied\n");
           continue;
-        }*/
+        }
         memset(path,0,sizeof(path));
         memcpy(path,real_path,max_path_size);
       }else{//failed
@@ -370,29 +466,29 @@ int terminal()
       if(ret!=0){
         continue;//failed
       }
-      /*ret=sc_access(real_path,SC_W_ALL);
+      ret=sc_access(path,SC_W_OK);
       if(ret!=0){
         printf("write permission denied\n");
         continue;
-      }*/
+      }
       ret=sc_mkdir(real_path,SC_DEFAULT_DIR);
       if(ret==0){//success!
       }else{
         printf("mkdir failed\n");
       }
 
-    }else if(strcmp(buf,"cat")==0){//todo
+    }else if(strcmp(buf,"cat")==0){//ok
       memset(buf,0,sizeof(buf));
       scanf("%s",buf);
       ret=get_real_path(true);
       if(ret!=0){//failed
         continue;
       }
-      /*ret=sc_access(real_path,SC_R_ALL);
+      ret=sc_access(real_path,SC_R_OK);
       if(ret!=0){
         printf("read permission denied\n");
         continue;
-      }*/
+      }
       char* cat_buf=(char*)malloc(sizeof(char)*SC_BLOCK_SIZE);
       ret=sc_read(real_path,cat_buf,SC_BLOCK_SIZE,0,NULL);
       if(ret<0){//failed
@@ -400,6 +496,8 @@ int terminal()
         continue;
       }
       printf("%s\n",cat_buf);
+      if(ret>1024)
+        printf("\nfile too long, the rest part is hidden\n");
       free(cat_buf);
     }else if(strcmp(buf,"touch")==0){//ok
       memset(buf,0,sizeof(buf));
@@ -409,11 +507,11 @@ int terminal()
       if(ret!=0){
         continue;//failed
       }
-      /*ret=sc_access(real_path,SC_W_ALL);
+      ret=sc_access(path,SC_W_OK);
       if(ret!=0){
-        printf("write permission denied\n");
+        printf("%s %d write permission denied\n", path, ret);
         continue;
-      }*/
+      }
       ret=sc_create(real_path,SC_DEFAULT_DIR,NULL);
       if(ret==0){//success!
       }else{
@@ -426,19 +524,58 @@ int terminal()
       if(ret!=0){
         continue;//failed
       }
-      /*ret=sc_access(real_path,SC_W_ALL);
+      ret=sc_access(real_path,SC_W_OK);
       if(ret!=0){
         printf("write permission denied\n");
         continue;
-      }*/
+      }
       ret=sc_rmdir(real_path);
       if(ret==0){//success
       }else{
         printf("rm failed\n");
       }
     }else if(strcmp(buf,"cp")==0){//todo
-
-    }else if(strcmp(buf,"vi")==0){//have problem
+      char* cp_buf=malloc(sizeof(char)*SC_BLOCK_SIZE);
+      char* path_src=malloc(sizeof(char)*max_path_size);
+      char* path_dest=malloc(sizeof(char)*max_path_size);
+      int now;
+      memset(buf,0,sizeof(buf));
+      scanf("%s",buf);
+      ret=get_real_path(true);
+      if(ret!=0){
+        continue;//failed
+      }
+      memcpy(path_src,real_path,strlen(real_path));
+      ret=sc_access(path_src,SC_R_OK);
+      if(ret!=0){
+        printf("read permission denied\n");
+        continue;
+      }
+      memset(buf,0,sizeof(buf));
+      scanf("%s",buf);
+      ret=get_real_path(true);
+      if(ret!=0){
+        continue;//failed
+      }
+      memcpy(path_dest,real_path,strlen(real_path));
+      ret=sc_access(path_dest,SC_W_OK);
+      if(ret!=0){
+        printf("write permission denied\n");
+        continue;
+      }
+      if(strcmp(path_src,path_dest)==0){
+        sc_rename(path_src,path_dest,0);
+      }else{
+        now=0;
+        while(ret=sc_read(path_src,cp_buf,SC_BLOCK_SIZE,now,NULL)){
+          sc_write(path_dest,cp_buf,SC_BLOCK_SIZE,now,NULL);
+          now+=SC_BLOCK_SIZE;
+        }
+      }
+      free(path_dest);
+      free(path_src);
+      free(cp_buf);
+    }else if(strcmp(buf,"vi")==0){//ok, with ignorable tiny problem
       memset(buf,0,sizeof(buf));
       scanf("%s",buf);
       ret=get_real_path(true);
@@ -466,8 +603,75 @@ int terminal()
         printf("write failed\n");
         continue;
       }
-    }else if(strcmp(buf,"chmod")==0){//todo
-
+    }else if(strcmp(buf,"chmod")==0){//checking
+      unsigned int new_mode;
+      memset(buf,0,sizeof(buf));
+      scanf("%o%s",&new_mode,buf);
+      ret=get_real_path(true);
+      if(ret!=0){//failed
+        continue;
+      }
+      ret=sc_access(path,SC_W_OK);
+      if(ret!=0){//failed
+        printf("write permission denied\n");
+        continue;
+      }
+      ret=sc_chmod(path,new_mode,NULL);
+      if(ret!=0){//failed
+        printf("chmod failed\n");
+        continue;
+      }
+    }else if(strcmp(buf,"passwd")==0){
+      memset(buf,0,sizeof(buf));
+      scanf("%s",buf);
+      ret=command_passwd(username,buf);
+      if(ret!=0){
+        printf("passwd failed\n");
+        continue;
+      }
+    }else if(strcmp(buf,"useradd")==0){
+      memset(buf,0,sizeof(buf));
+      scanf("%s",buf);
+      ret=command_useradd(buf);
+      if(ret!=0){
+        printf("useradd failed\n");
+        continue;
+      }
+    }else if(strcmp(buf,"userdel")==0){
+      memset(buf,0,sizeof(buf));
+      scanf("%s",buf);
+      ret=command_userdel(buf);
+      if(ret!=0){
+        printf("userdel failed\n");
+        continue;
+      }
+    }else if(strcmp(buf,"groupadd")==0){
+      memset(buf,0,sizeof(buf));
+      scanf("%s",buf);
+      ret=command_groupadd(buf);
+      if(ret!=0){
+        printf("groupadd failed\n");
+        continue;
+      }
+    }else if(strcmp(buf,"groupdel")==0){
+      memset(buf,0,sizeof(buf));
+      scanf("%s",buf);
+      ret=command_groupdel(buf);
+      if(ret!=0){
+        printf("groupdel failed\n");
+        continue;
+      }
+    }else if(strcmp(buf,"gpasswd")==0){
+      memset(buf,0,sizeof(buf));
+      scanf("%s",buf);
+      ret=command_gpasswd(username,buf);
+      if(ret!=0){
+        printf("gpasswd failed\n");
+        continue;
+      }
+    }else if(strcmp(buf,"scfsviewer")==0){
+      scfsviewer();
+      system("reset");
     }else{
       printf("%s: command not found\n",buf);
     }
@@ -489,10 +693,10 @@ int main()
     return 0;
   }
   init();
-  //if(login()!=0){
-  //  printf("login failed, system exit");
-  //  return 0;
-  //}
+  if(login()!=0){
+    printf("login failed, system exit");
+    return 0;
+  }
   terminal();
   ret=close_scfs();
   if(ret!=0){

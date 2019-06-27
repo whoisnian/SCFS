@@ -883,6 +883,7 @@ int sc_access(const char *path, int mask)
     ret = -1;
     if((cur_inode->mode&mask)==mask)
         ret = 0;
-
+    if(ret==-1&&cur_user_id==0&&mask!=0)
+        ret=0;
     return ret;
 }
