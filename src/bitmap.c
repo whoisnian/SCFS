@@ -9,6 +9,7 @@
 #include <string.h>
 #include "image.h"
 #include "bitmap.h"
+#include "definition.h"
 #include "debugprintf.h"
 
 int __init_bitmap_st(bitmap_st *bitmap)
@@ -125,14 +126,36 @@ int read_bitmap(sectorid_t bitmap_start, sectorid_t bitmap_end, int pos)
 
 int new_bitmap(sectorid_t bitmap_start, sectorid_t bitmap_end)
 {
-    // todo: 使用 unsigned long 优化：一次比较 unsigned long 长度的位，发现空位时再详细寻找
+    // 使用 unsigned long 优化：一次比较 unsigned long 长度的位，发现空位时再详细寻找
     // 假设1G大小，块大小为4K，则共2^30/2^12=2^18=262144个块，每个块对应一位，unsigned long 长度为64位，则共相当于262144/64=4096个无符号长整形
-    int pos, ret;
-    for(pos = 0;pos < (bitmap_end-bitmap_start+1)*SC_SECTOR_SIZE*8;pos++)
+    
+    // 旧的暴力写法，写入一个13M的图片需要20s
+    // int pos, ret;
+    // for(pos = 0;pos < (bitmap_end-bitmap_start+1)*SC_SECTOR_SIZE*8;pos++)
+    // {
+    //     ret = read_bitmap(bitmap_start, bitmap_end, pos);
+    //     if(ret == 0)
+    //         return pos;
+    // }
+    // return -1;
+
+    // 优化后的写法，写入同一个13M的图片需要0.26s
+    int ret;
+    unsigned long long_bitmap[SC_SECTOR_SIZE/sizeof(unsigned long)], tmp = 1;
+    for(unsigned int i = bitmap_start;i <= bitmap_end;i++)
     {
-        ret = read_bitmap(bitmap_start, bitmap_end, pos);
-        if(ret == 0)
-            return pos;
+        ret = read_image(bitmap_start, &long_bitmap, sizeof(bitmap_st));
+        if(ret != 0)
+            return ret;
+        for(int j = 0;j < SC_SECTOR_SIZE/sizeof(unsigned long);j++)
+        {
+            if((long_bitmap[j]^0xffffffffffffffff)!=0)
+            {
+                int num = 0;
+                for(;(long_bitmap[j]&(tmp<<num))!=0;num++);
+                return (i-bitmap_start)*SC_SECTOR_SIZE*8+j*sizeof(unsigned long)*8+num;
+            }
+        }
     }
     return -1;
 }
