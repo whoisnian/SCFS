@@ -124,7 +124,8 @@ char* vi(char* prech)//文本输入器
           }
           memset(ch[x],0,sizeof(ch[x]));
           memcpy(ch[x],ch[x-1]+y,limity-y);
-          for(int i=y;i<limity;i++)ch[x-1][i]=0;
+          ch[x-1][y]='\n';
+          for(int i=y+1;i<limity;i++)ch[x-1][i]=0;
           y=0;
         }else if(y<limity)
         {
@@ -166,13 +167,15 @@ char* vi(char* prech)//文本输入器
           }
           prech=(char*)malloc(len*sizeof(char));
           memset(prech,0,len*sizeof(char));
-          for(int i=0;i<limitx;i++)
+          int maxx=limitx;
+          //while(maxx&&strlen(ch[maxx-1])==0)maxx--;
+          for(int i=0;i<maxx;i++)
           {
             if(strlen(ch[i])>0)
             {
               memcpy(prech+now,ch[i],strlen(ch[i]));
-              now+=strlen(ch[i])+1;
-              prech[now-1]='\n';
+              now+=strlen(ch[i]);
+              //prech[now-1]='\n';
             }
           }
           return prech;
@@ -453,9 +456,10 @@ int terminal()
         printf("read failed\n");
         continue;
       }
+      //printf("%s\n",vi_buf);getchar();getchar();//debug
       vi_buf=vi(vi_buf);//have problem here
       system("reset");
-      printf("(%s)(%s)(%d)\n",vi_buf,real_path,strlen(vi_buf));//debug
+      //printf("(%s)(%s)(%d)\n",vi_buf,real_path,strlen(vi_buf));//debug
       ret=sc_write(real_path,vi_buf,strlen(vi_buf),0,NULL);
       free(vi_buf);
       if(ret<0){//failed
