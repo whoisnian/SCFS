@@ -734,6 +734,7 @@ int sc_open(const char *path, struct fuse_file_info *fi)
 
 int sc_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
+    debug_printf(debug_info, "Call sc_read(path %s, buf, size %u, offset %u, fi)\n", path, size, offset);
     (void) fi;
     int ret, res;
     size_t ret_size = 0;
@@ -824,6 +825,7 @@ int sc_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_
 
 int sc_write(const char *path, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
+    debug_printf(debug_info, "Call sc_write(path %s, buf, size %u, offset %u, fi)\n", path, size, offset);
     int ret;
     if(!strcmp(path, "/.run_command"))
     {
@@ -1021,7 +1023,7 @@ int sc_chmod(const char *path, mode_t mode, struct fuse_file_info *fi)
             return -EACCES;
     }
 
-    cur_inode->mode = SC_DIR|mode;
+    cur_inode->mode = mode;
     cur_inode->user = cur_user_id;
     cur_inode->group = cur_group_id;
 

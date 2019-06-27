@@ -775,6 +775,8 @@ int find_inode(const char *path, inodeid_t *inodeid)
         if(ok) return -1;
         subpath = strtok(NULL, "/");
     }
+    if(oripath != NULL)
+        free(oripath);
     return 0;
 }
 
