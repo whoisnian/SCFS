@@ -519,7 +519,7 @@ int terminal()
         printf("%s %d write permission denied\n", path, ret);
         continue;
       }
-      ret=sc_create(real_path,SC_DEFAULT_DIR,NULL);
+      ret=sc_create(real_path,SC_DEFAULT_FILE,NULL);
       if(ret==0){//success!
       }else{
         printf("touch failed\n");
@@ -577,6 +577,11 @@ int terminal()
         sc_rename(path_src,path_dest,0);
       }else{
         now=0;
+        ret=sc_create(path_src,SC_DEFAULT_FILE,NULL);
+        if(ret==0){//success!
+        }else{
+          printf("touch failed\n");
+        }
         while(ret=sc_read(path_src,cp_buf,SC_BLOCK_SIZE,now,NULL)){
           sc_write(path_dest,cp_buf,SC_BLOCK_SIZE,now,NULL);
           now+=SC_BLOCK_SIZE;
@@ -640,7 +645,10 @@ int terminal()
     }else if(strcmp(buf,"passwd")==0){
       memset(buf,0,sizeof(buf));
       scanf("%s",buf);
-      ret=command_passwd(username,buf);
+      char* buf2=malloc(sizeof(char)*SC_BLOCK_SIZE);
+      memset(buf2,0,sizeof(char)*SC_BLOCK_SIZE);
+      scanf("%s",buf2);
+      ret=command_passwd(buf,buf2);
       if(ret!=0){
         printf("passwd failed\n");
         continue;
@@ -697,12 +705,12 @@ int terminal()
 int main()
 {
   int ret;
-  ret = init_scfs("test.img");
+  /*ret = init_scfs("test.img");
   if(ret!=0)
   {
     printf("init scfs failed in function main,line__LINE__\n");
     return 0;
-  }
+  }*/
   ret = open_scfs("test.img");
   if(ret!=0){
     printf("open scfs failed in function main,line__LINE__\n");
