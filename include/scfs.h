@@ -7,6 +7,7 @@
 
 extern unsigned int cur_user_id;
 extern unsigned int cur_group_id;  
+extern int temp_root;
 
 int init_scfs(const char *filepath);
 int open_scfs(const char *filepath);
