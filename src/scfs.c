@@ -108,6 +108,7 @@ int init_scfs(const char *filepath)
     if(sc_access("/.passwd", SC_F_OK) != 0)
     {
         sc_create("/.passwd", SC_REG|SC_USR_R|SC_USR_W|SC_GRP_R|SC_OTH_R, NULL);
+        sc_chown("/.passwd", 0, 0, NULL);
         // username:x:uid:gid:::
         // root:x:0:0:::
         memset(tmp, 0, sizeof(tmp));
@@ -117,6 +118,7 @@ int init_scfs(const char *filepath)
     if(sc_access("/.group", SC_F_OK) != 0)
     {
         sc_create("/.group", SC_REG|SC_USR_R|SC_USR_W|SC_GRP_R|SC_OTH_R, NULL);
+        sc_chown("/.group", 0, 0, NULL);
         // groupname:x:gid:
         // root:x:0:
         memset(tmp, 0, sizeof(tmp));
@@ -126,6 +128,7 @@ int init_scfs(const char *filepath)
     if(sc_access("/.shadow", SC_F_OK) != 0)
     {
         sc_create("/.shadow", SC_REG|SC_USR_R|SC_USR_W, NULL);
+        sc_chown("/.shadow", 0, 0, NULL);
         // username:password
         // root:toor
         memset(tmp, 0, sizeof(tmp));
@@ -137,14 +140,17 @@ int init_scfs(const char *filepath)
     if(sc_access("/.run_command", SC_F_OK) != 0)
     {
         sc_create("/.run_command", SC_REG|SC_USR_W|SC_GRP_W|SC_OTH_W, NULL);
+        sc_chown("/.run_command", 0, 0, NULL);
     }
     if(sc_access("/tmp", SC_F_OK) != 0)
     {
-        sc_create("/tmp", SC_DIR|SC_USR_ALL|SC_GRP_ALL|SC_OTH_ALL, NULL);
+        sc_mkdir("/tmp", SC_DIR|SC_USR_ALL|SC_GRP_ALL|SC_OTH_ALL);
+        sc_chown("/tmp", 0, 0, NULL);
     }
     if(sc_access("/bin", SC_F_OK) != 0)
     {
-        sc_create("/bin", SC_DEFAULT_DIR, NULL);
+        sc_mkdir("/bin", SC_DEFAULT_DIR);
+        sc_chown("/bin", 0, 0, NULL);
         // todo 写入脚本
     }
     temp_root = 0;
@@ -946,15 +952,16 @@ int sc_mkdir(const char *path, mode_t mode)
     if(ret != 0)
         return ret;
 
-    ret = change_inode_mode(inodeid, mode|SC_DIR);
-    if(ret != 0)
-        return ret;
+    inode_st *inode = read_inode(inodeid);
+    inode->mode = SC_DIR|mode;
+    inode->user = cur_user_id;
+    inode->group = cur_group_id;
 
-    temp_root = 1;
-    ret = sc_chown(path, cur_user_id, cur_group_id, NULL);
-    temp_root = 0;
+    ret = write_inode(inodeid, inode);
     if(ret != 0)
         return ret;
+    if(inode != NULL)
+        free(inode);
     return 0;
 }
 
@@ -975,15 +982,16 @@ int sc_create(const char *path, mode_t mode, struct fuse_file_info *fi)
     if(ret != 0)
         return ret;
     
-    ret = change_inode_mode(inodeid, mode|SC_REG);
+    inode_st *inode = read_inode(inodeid);
+    inode->mode = SC_REG|mode;
+    inode->user = cur_user_id;
+    inode->group = cur_group_id;
+
+    ret = write_inode(inodeid, inode);
     if(ret != 0)
         return ret;
-    
-    temp_root = 1;
-    ret = sc_chown(path, cur_user_id, cur_group_id, NULL);
-    temp_root = 0;
-    if(ret != 0)
-        return ret;
+    if(inode != NULL)
+        free(inode);
     return 0;
 }
 
@@ -1012,11 +1020,16 @@ int sc_chmod(const char *path, mode_t mode, struct fuse_file_info *fi)
         if((cur_inode->mode&mask)!=mask)
             return -EACCES;
     }
-    free(cur_inode);
 
-    ret = change_inode_mode(cur_inodeid, mode);
+    cur_inode->mode = SC_DIR|mode;
+    cur_inode->user = cur_user_id;
+    cur_inode->group = cur_group_id;
+
+    ret = write_inode(cur_inodeid, cur_inode);
     if(ret != 0)
         return ret;
+    if(cur_inode != NULL)
+        free(cur_inode);
     return 0;
 }
 

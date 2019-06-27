@@ -83,10 +83,10 @@ int find_inode(const char *path, inodeid_t *inodeid);
 // 根据路径创建inode
 int make_inode(const char *path, inodeid_t *inodeid);
 
-// 修改指定inode的mode
-int change_inode_mode(inodeid_t inodeid, unsigned int mode);
-
 // 查看inode调试信息
 void debug_inode(const inode_st *inode);
+
+int min(int x,int y);
+int max(int x,int y);
 
 #endif // INODE_H

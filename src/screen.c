@@ -292,17 +292,16 @@ void scfsviewer()//查看各种信息
 }
 
 int init(){
-  int ret;
   memset(buf,0,sizeof(buf));
   memset(path,0,sizeof(path));
   memset(username,0,sizeof(username));
   memset(password,0,sizeof(password));
   system("reset");
+  return 0;
 }
 
 int login()
 {
-
   int max_fail_time=3;//max time of failed login attempt
   int fail_time=0;
   do
@@ -336,6 +335,7 @@ int login()
       printf("permission failed, please try again\n");
     }
   }while(1);
+  return 0;
 }
 
 //check return value and print warning for get_real_path 
@@ -365,29 +365,27 @@ int get_real_path(bool check_path){
     memcpy(real_path,buf,max_path_size);
     if(check_path)
     return check_return_get_real_path(check_path);
-  }else if(buf[0]=='.'){
-    if(strlen(buf)>=2&&buf[1]=='.'){
-      memcpy(real_path,path,max_path_size);
-      int i=strlen(real_path);
+  }else if(buf[0]=='.'&&strlen(buf)>=2&&buf[1]=='.'){
+    memcpy(real_path,path,max_path_size);
+    int i=strlen(real_path);
+    real_path[i-1]=0;
+    i--;
+    while(i&&real_path[i-1]!='/'){
       real_path[i-1]=0;
       i--;
-      while(i&&real_path[i-1]!='/'){
-        real_path[i-1]=0;
-        i--;
-      }
-      if(i)real_path[i-1]=0;
-      memcpy(real_path+strlen(real_path),buf+2,strlen(buf)-2);
-      if(strlen(real_path)==0)real_path[0]='/';
-      return check_return_get_real_path(check_path);
-    }else if(strlen(buf)>=2&&buf[1]=='/'){
-      if(strlen(buf)+strlen(path)-2>max_path_size){
-        printf("path argument is too long\n");
-        return -1;
-      }
-      memcpy(real_path,path,strlen(path));
-      memcpy(real_path+strlen(path),buf+2,strlen(buf)-2);
-      return check_return_get_real_path(check_path);
-    }else return -1;
+    }
+    if(i)real_path[i-1]=0;
+    memcpy(real_path+strlen(real_path),buf+2,strlen(buf)-2);
+    if(strlen(real_path)==0)real_path[0]='/';
+    return check_return_get_real_path(check_path);
+  }else if(buf[0]=='.'&&strlen(buf)>=2&&buf[1]=='/'){
+    if(strlen(buf)+strlen(path)-2>max_path_size){
+      printf("path argument is too long\n");
+      return -1;
+    }
+    memcpy(real_path,path,strlen(path));
+    memcpy(real_path+strlen(path),buf+2,strlen(buf)-2);
+    return check_return_get_real_path(check_path);
   }else{
     if(strlen(buf)+strlen(path)>max_path_size){
       printf("path argument is too long\n");
@@ -582,7 +580,7 @@ int terminal()
         }else{
           printf("touch failed\n");
         }
-        while(ret=sc_read(path_src,cp_buf,SC_BLOCK_SIZE,now,NULL)){
+        while((ret=sc_read(path_src,cp_buf,SC_BLOCK_SIZE,now,NULL))){
           sc_write(path_dest,cp_buf,SC_BLOCK_SIZE,now,NULL);
           now+=SC_BLOCK_SIZE;
         }
@@ -705,12 +703,15 @@ int terminal()
 int main()
 {
   int ret;
-  /*ret = init_scfs("test.img");
-  if(ret!=0)
+  if(access("test.img", F_OK) != 0)
   {
-    printf("init scfs failed in function main,line__LINE__\n");
-    return 0;
-  }*/
+    ret = init_scfs("test.img");
+    if(ret!=0)
+    {
+      printf("init scfs failed in function main,line__LINE__\n");
+      return 0;
+    }
+  }
   ret = open_scfs("test.img");
   if(ret!=0){
     printf("open scfs failed in function main,line__LINE__\n");

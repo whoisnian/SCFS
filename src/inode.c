@@ -836,19 +836,6 @@ int make_inode(const char *path, inodeid_t *inodeid)
     return 0;
 }
 
-int change_inode_mode(inodeid_t inodeid, unsigned int mode)
-{
-    int ret = 0;
-    inode_st *inode;
-    inode = read_inode(inodeid);
-    inode->mode = mode;
-
-    ret = write_inode(inodeid, inode);
-    free(inode);
-
-    return ret;
-}
-
 void debug_inode(const inode_st *inode)
 {
     printf("mode            = %o\n", inode->mode);
