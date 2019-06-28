@@ -1,7 +1,7 @@
 # SCFS
 Simple and Crude FileSystem.  
 
-仿Linux下ext2结构的文件系统，提供“挂载到目录，使用已安装软件正常访问读写”和“使用命令行预定义指令进行交互”两种使用方式。
+仿Linux下ext2结构的文件系统，提供目录挂载模式和命令行交互模式两种使用方式。
 
 ## 要求
 * Linux 环境
@@ -9,12 +9,12 @@ Simple and Crude FileSystem.
 
 ## 相关设计
 * root 用户默认密码`toor`；
-* root 用户 uid 和 gid 为 0，目录挂载模式下登录前用户 uid 和 gid 为 2000，相当于访客身份，新建用户uid从2001开始递增，新建用户组gid从3001开始递增；
-* 目录挂载模式下通过运行 bin 目录下程序进行用户登录，新建用户，修改密码等操作，程序获取用户输入后向`/.run_command`文件写入内容，文件系统在`sc_write()`函数内拦截对该文件的写入操作，并执行相应指令。；
-* `test_debug`程序用于查看虚拟磁盘文件源数据，如超级块，索引节点信息，数据块十六进制数据等，输入`h`可查看使用帮助；
+* root 用户 uid 和 gid 为 0，目录挂载模式下登录前用户 uid 和 gid 为 2000，相当于访客身份，新建用户 uid 从 2001 开始递增，新建用户组 gid 从 3001 开始递增；
+* 目录挂载模式下通过运行 bin 目录下可执行程序进行用户登录，新建用户，修改密码等操作，原理是脚本程序获取用户输入后向`/.run_command`文件写入内容，文件系统在`sc_write()`函数内拦截对该文件的写入操作，并执行相应指令；
+* `test_debug`程序用于查看虚拟磁盘文件源数据，如超级块信息，索引节点信息，数据块十六进制数据等，输入`h`可查看使用帮助；
 * `test_fuse`为目录挂载模式主程序，由于部分函数未实现线程安全，如用到的`strtok()`，运行时需要指定单线程模式；
-* `test_screen`为命令行交互主程序，支持指令包括：`clear`，`exit`，`ls`，`cd`，`mkdir`，`cat`，`touch`，`rm`，`cp`，`chmod`，`passwd`，`useradd`，`userdel`，`groupadd`，`groupdel`，`gpasswd`，`vi`，和`scfsviewer`，`vi`是一个十分简单的编辑器，`scfsviewer`是集成进来的`test_debug`功能；
-* bitmap 查找时每次读取`unsigned long`长度（64位），假设 1G 大小的虚拟磁盘文件，块大小为 4K，则共`2^30/2^12 = 2^18 = 262144`个块，每个块对应一位，则共相当于`262144/64 = 4096`个无符号长整形，查找速度可以接受；
+* `test_screen`为命令行交互主程序，支持指令包括：`clear`，`exit`，`ls`，`cd`，`mkdir`，`cat`，`touch`，`rm`，`cp`，`chmod`，`passwd`，`useradd`，`userdel`，`groupadd`，`groupdel`，`gpasswd`，`vi`，和`scfsviewer`，其中`vi`是一个十分简单的编辑器，`scfsviewer`是集成进来的`test_debug`功能；
+* bitmap 查找未使用的位时每次读取`unsigned long`长度（64位），假设 1G 大小的虚拟磁盘文件，块大小为 4K，则共`2^30/2^12 = 2^18 = 262144`个块，每个块对应一位，则共相当于`262144/64 = 4096`个无符号长整形，查找速度可以接受；
 * inode 下 block 块号存储区预留16个直接，2个间接，1个双间接，一共可以指向`16+2*1024+1*1024*1024 = 1050640`个有效block，即单个文件最大约为4G。
 
 ## 使用
