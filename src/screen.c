@@ -536,7 +536,7 @@ int terminal()
         continue;
       }
       ret=sc_rmdir(real_path);
-      if(ret==0){//success
+      if(ret!=0){//success
       }else{
         printf("rm failed\n");
       }
@@ -562,12 +562,12 @@ int terminal()
       }
       memset(buf,0,sizeof(buf));
       scanf("%s",buf);
-      ret=get_real_path(true);
+      ret=get_real_path(false);
       if(ret!=0){
         continue;//failed
       }
       memcpy(path_dest,real_path,strlen(real_path));
-      ret=sc_access(path_dest,SC_W_OK);
+      //ret=sc_access(path_dest,SC_W_OK);
       if(ret!=0){
         printf("write permission denied\n");
         continue;
@@ -576,10 +576,10 @@ int terminal()
         sc_rename(path_src,path_dest,0);
       }else{
         now=0;
-        ret=sc_create(path_src,SC_DEFAULT_FILE,NULL);
+        ret=sc_create(path_dest,SC_DEFAULT_FILE,NULL);
         if(ret==0){//success!
         }else{
-          printf("touch failed\n");
+          printf("create failed\n");
         }
         while((ret=sc_read(path_src,cp_buf,SC_BLOCK_SIZE,now,NULL))){
           sc_write(path_dest,cp_buf,SC_BLOCK_SIZE,now,NULL);
@@ -652,6 +652,7 @@ int terminal()
         printf("passwd failed\n");
         continue;
       }
+      free(buf2);
     }else if(strcmp(buf,"useradd")==0){
       memset(buf,0,sizeof(buf));
       scanf("%s",buf);
@@ -687,11 +688,15 @@ int terminal()
     }else if(strcmp(buf,"gpasswd")==0){
       memset(buf,0,sizeof(buf));
       scanf("%s",buf);
-      ret=command_gpasswd(username,buf);
+      char* buf2=malloc(sizeof(char)*SC_BLOCK_SIZE);
+      memset(buf2,0,sizeof(char)*SC_BLOCK_SIZE);
+      scanf("%s",buf2);
+      ret=command_gpasswd(buf,buf2);
       if(ret!=0){
         printf("gpasswd failed\n");
         continue;
       }
+      free(buf2);
     }else if(strcmp(buf,"scfsviewer")==0){
       scfsviewer();
       system("reset");
@@ -704,6 +709,7 @@ int terminal()
 int main()
 {
   int ret;
+  //``````                                ret = init_scfs("test.img");
   if(access("test.img", F_OK) != 0)
   {
     ret = init_scfs("test.img");
